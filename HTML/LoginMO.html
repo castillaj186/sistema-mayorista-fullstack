@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Login Makro</title>
+
+    <link rel="stylesheet"
+          href="/CSS/LoginMO.css">
+
+</head>
+
+<body>
+
+<main class="pagina">
+
+    <img src="/IMG/Fondo.png"
+         class="fondo"
+         alt="Makro">
+
+    <div class="capa-azul"></div>
+
+    <div class="circulo-azul"></div>
+
+    <div class="circulo-amarillo"></div>
+
+    <div class="puntos"></div>
+
+    <section class="info">
+
+        <div class="logo">
+            makro
+        </div>
+
+        <h1>
+            Tu aliado del <br>
+            <span>ahorro al por mayor</span>
+        </h1>
+
+        <div class="linea">
+            <span></span>
+        </div>
+
+        <p>
+            Accede a precios mayoristas exclusivos,
+            ofertas especiales y soluciones
+            pensadas para tu negocio.
+        </p>
+
+        <div class="beneficios">
+
+            <div class="beneficio">
+
+                <div class="icono">
+                    <img src="/ICON/icon1.png" alt="">
+                </div>
+
+                <h3>
+                    Precios <br>
+                    mayoristas
+                </h3>
+
+            </div>
+
+            <div class="beneficio">
+
+                <div class="icono">
+                    <img src="/ICON/icon2.png" alt="">
+                </div>
+
+                <h3>
+                    Ofertas <br>
+                    exclusivas
+                </h3>
+
+            </div>
+
+            <div class="beneficio">
+
+                <div class="icono">
+                    <img src="/ICON/icon3.png" alt="">
+                </div>
+
+                <h3>
+                    Variedad de <br>
+                    productos
+                </h3>
+
+            </div>
+
+        </div>
+
+        <button class="btn-tienda"
+                type="button">
+
+            <img src="/ICON/icon4.png"
+                 alt="">
+
+            <span>
+                Encuentra tu tienda Makro
+                más cercana
+            </span>
+
+            <b>›</b>
+
+        </button>
+
+    </section>
+
+    <section class="zona-login">
+
+        <div class="ayuda">
+            ¿Necesitas ayuda? 🎧
+        </div>
+
+        <form class="tarjeta"
+              id="formLogin">
+
+            <h2>
+                Iniciar sesión
+            </h2>
+
+            <div class="subrayado"></div>
+
+            <label for="correoLogin">
+                Correo electrónico
+            </label>
+
+            <div class="campo">
+
+                <img src="/ICON/icon5.png"
+                     alt="">
+
+                <input type="email"
+                       id="correoLogin"
+                       placeholder="ejemplo@correo.com"
+                       required>
+
+            </div>
+
+            <label for="passLogin">
+                Contraseña
+            </label>
+
+            <div class="campo">
+
+                <img src="/ICON/icon7.png"
+                     alt="">
+
+                <input type="password"
+                       id="passLogin"
+                       placeholder="Ingresa tu contraseña"
+                       required>
+
+                <span class="ojo">
+                    ⊙
+                </span>
+
+            </div>
+
+            <div class="opciones">
+
+                <label class="recordar">
+
+                    <input type="checkbox"
+                           checked>
+
+                    Recordarme
+
+                </label>
+
+                <a href="#">
+                    ¿Olvidaste tu contraseña?
+                </a>
+
+            </div>
+
+            <button class="btn-login"
+                    type="submit">
+
+                Entrar
+
+            </button>
+
+            <div class="separador">
+                o
+            </div>
+
+            <button class="btn-crear"
+                    type="button"
+                    id="btnMostrarRegistro">
+
+                Crear cuenta
+
+            </button>
+
+        </form>
+
+        <form class="tarjeta"
+              id="formRegistro"
+              style="display:none;">
+
+            <h2>
+                Crear cuenta
+            </h2>
+
+            <div class="subrayado"></div>
+
+            <label for="correoReg">
+                Correo electrónico
+            </label>
+
+            <div class="campo">
+
+                <img src="/ICON/icon5.png"
+                     alt="">
+
+                <input type="email"
+                       id="correoReg"
+                       placeholder="ejemplo@correo.com"
+                       required>
+
+            </div>
+
+            <label for="passReg">
+                Contraseña
+            </label>
+
+            <div class="campo">
+
+                <img src="/ICON/icon7.png"
+                     alt="">
+
+                <input type="password"
+                       id="passReg"
+                       placeholder="Ingresa tu contraseña"
+                       required>
+
+            </div>
+
+            <label for="rol">
+                Rol
+            </label>
+
+            <div class="campo">
+
+                <select id="rol">
+
+                    <option value="0">
+                        Trabajador
+                    </option>
+
+                    <option value="1">
+                        Administrador
+                    </option>
+
+                </select>
+
+            </div>
+
+            <button class="btn-login"
+                    type="submit">
+
+                Registrar
+
+            </button>
+
+            <button class="btn-crear volver"
+                    type="button"
+                    id="btnMostrarLogin">
+
+                Volver al login
+
+            </button>
+
+        </form>
+
+    </section>
+
+    <section class="barra-inferior">
+
+        <div class="item">
+
+            <div class="mini-icon">
+                🛡️
+            </div>
+
+            <div>
+
+                <h4>
+                    Compra segura
+                </h4>
+
+                <p>
+                    Protegemos tus datos
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="item">
+
+            <div class="mini-icon">
+                🏅
+            </div>
+
+            <div>
+
+                <h4>
+                    Calidad garantizada
+                </h4>
+
+                <p>
+                    Productos de las mejores marcas
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="item">
+
+            <div class="mini-icon">
+                🎧
+            </div>
+
+            <div>
+
+                <h4>
+                    Soporte dedicado
+                </h4>
+
+                <p>
+                    Estamos para ayudarte
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="item">
+
+            <div class="mini-icon">
+                💳
+            </div>
+
+            <div>
+
+                <h4>
+                    Pagos fáciles y rápidos
+                </h4>
+
+                <p>
+                    Múltiples métodos de pago
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+</main>
+
+<script src="/JS/LoginMO.js"></script>
+
+</body>
+</html>

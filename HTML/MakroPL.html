@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Trabajador Makro</title>
+    <link rel="stylesheet" href="/CSS/MakroPL.css">
+</head>
+
+<body>
+
+    <aside class="sidebar">
+
+        <div class="logo">
+            <h1>makro</h1>
+            <p>Panel del trabajador</p>
+        </div>
+
+        <nav class="menu">
+
+            <a href="#" class="activo" id="btnDashboard">
+                <span>🏠</span>
+                Dashboard
+            </a>
+
+            <a href="#" id="btnCatalogo">
+                <span>📦</span>
+                Catálogo
+            </a>
+
+            <a href="#" id="btnVenta">
+                <span>💰</span>
+                Registrar venta
+            </a>
+
+            <a href="#" id="btnInventario">
+                <span>🏬</span>
+                Inventario
+            </a>
+
+            <a href="#" id="btnEntregas">
+                <span>🚚</span>
+                Próximas entregas
+            </a>
+
+            <a href="#" id="btnModoOffline">
+                <span>♟️</span>
+                Probar modo offline
+            </a>
+
+        </nav>
+
+        <div class="promo">
+            <div class="promo-icono">🛒</div>
+            <h3>Atención rápida</h3>
+            <p>Consulta productos, stock y ventas del día.</p>
+        </div>
+
+    </aside>
+
+    <main class="contenido" id="contenidoPrincipal">
+
+        <header class="topbar">
+
+            <button class="btn-menu">☰</button>
+
+            <div class="buscador">
+                <span>🔍</span>
+                <input type="text" id="buscadorGeneral" placeholder="Buscar productos...">
+            </div>
+
+            <div class="perfil">
+                <div class="avatar">👷</div>
+
+                <div>
+                    <h4>Trabajador</h4>
+                    <p>Makro</p>
+                </div>
+
+                <button id="btnCerrarSesion" class="btn-cerrar">
+                    Cerrar sesión
+                </button>
+            </div>
+
+        </header>
+
+        <section class="encabezado">
+            <div>
+                <h2 id="tituloPagina">Dashboard</h2>
+                <p id="descripcionPagina">Resumen operativo del trabajador</p>
+            </div>
+        </section>
+
+        <section id="seccionDashboard">
+
+            <section class="cards">
+
+                <div class="card">
+                    <div class="icono azul">💰</div>
+                    <div>
+                        <p>Ventas del día</p>
+                        <h3 id="ventasDia">S/ 0.00</h3>
+                        <span>Registradas hoy</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="icono verde-bg">📦</div>
+                    <div>
+                        <p>Productos disponibles</p>
+                        <h3 id="productosDisponibles">0</h3>
+                        <span>Con stock activo</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="icono amarillo-bg">⚠️</div>
+                    <div>
+                        <p>Stock bajo</p>
+                        <h3 id="productosStockBajo">0</h3>
+                        <span>Stock menor o igual a 10</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="icono morado-bg">🚚</div>
+                    <div>
+                        <p>Próximas entregas</p>
+                        <h3 id="proximasEntregas">0</h3>
+                        <span>Proveedores programados</span>
+                    </div>
+                </div>
+
+            </section>
+
+            <section class="grid-principal">
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3>Productos con stock bajo</h3>
+                    </div>
+
+                    <div id="dashboardStockBajo" class="alertas-stock">
+                        Cargando productos...
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3>Próximas entregas</h3>
+                    </div>
+
+                    <div id="dashboardEntregas" class="lista-entregas">
+                        Cargando entregas...
+                    </div>
+                </div>
+
+            </section>
+
+        </section>
+
+        <section id="seccionCatalogo" style="display:none;">
+
+            <section class="panel panel-completo">
+
+                <div class="panel-header">
+                    <h3>Catálogo de productos</h3>
+
+                    <select id="filtroCategoriaCatalogo">
+                        <option value="Todos">Todas las categorías</option>
+                        <option value="Alimentos">Alimentos</option>
+                        <option value="Bebidas">Bebidas</option>
+                        <option value="Limpieza">Limpieza</option>
+                        <option value="Cuidado personal">Cuidado personal</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                </div>
+
+                <div id="listaCatalogo" class="productos-grid">
+                    <div class="producto-vacio">
+                        Cargando productos...
+                    </div>
+                </div>
+
+            </section>
+
+        </section>
+
+        <section id="seccionVenta" style="display:none;">
+
+            <section class="venta-layout">
+
+                <div class="panel">
+
+                    <div class="panel-header">
+                        <h3>Registrar venta</h3>
+                    </div>
+
+                    <form id="formAgregarVenta" class="form-admin">
+
+                        <label for="productoVenta">Producto</label>
+                        <select id="productoVenta" required>
+                            <option value="">Seleccione producto</option>
+                        </select>
+
+                        <label for="cantidadVenta">Cantidad</label>
+                        <input type="number" id="cantidadVenta" min="1" value="1" required>
+
+                        <button type="submit">
+                            Agregar al carrito
+                        </button>
+
+                    </form>
+
+                </div>
+
+                <div class="panel">
+
+                    <div class="panel-header">
+                        <h3>Carrito de venta</h3>
+                        <button id="btnVaciarCarrito" class="btn-secundario">
+                            Vaciar
+                        </button>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Cantidad</th>
+                                <th>Precio</th>
+                                <th>Subtotal</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="tablaCarrito">
+                            <tr>
+                                <td colspan="4">No hay productos agregados</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="total-venta">
+                        <span>Total:</span>
+                        <strong id="totalVenta">S/ 0.00</strong>
+                    </div>
+
+                    <button id="btnGuardarVenta" class="btn-principal">
+                        Guardar venta
+                    </button>
+
+                </div>
+
+            </section>
+
+        </section>
+
+        <section id="seccionInventario" style="display:none;">
+
+            <section class="panel panel-completo">
+
+                <div class="panel-header">
+                    <h3>Inventario</h3>
+                    <button id="btnActualizarInventario" class="btn-actualizar">
+                        Actualizar
+                    </button>
+                </div>
+
+                <div class="tabla-scroll">
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Imagen</th>
+                                <th>Producto</th>
+                                <th>Categoría</th>
+                                <th>Precio</th>
+                                <th>Stock</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="tablaInventario">
+                            <tr>
+                                <td colspan="6">Cargando inventario...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+
+            </section>
+
+        </section>
+
+        <section id="seccionEntregas" style="display:none;">
+
+            <section class="panel panel-completo">
+
+                <div class="panel-header">
+                    <h3>Proveedores y próximas entregas</h3>
+                    <button id="btnActualizarEntregas" class="btn-actualizar">
+                        Actualizar
+                    </button>
+                </div>
+
+                <div class="tabla-scroll">
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Empresa</th>
+                                <th>Categoría</th>
+                                <th>Contacto</th>
+                                <th>Entregas 2026</th>
+                                <th>Próxima entrega</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="tablaEntregas">
+                            <tr>
+                                <td colspan="6">Cargando entregas...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+
+            </section>
+
+        </section>
+
+        <footer>
+            <p>© 2026 Makro. Panel trabajador.</p>
+            <p>Versión 1.0.0</p>
+        </footer>
+
+    </main>
+
+    <section id="modoOffline" class="modo-offline" style="display:none;">
+
+        <div class="offline-card">
+
+            <div class="offline-header">
+                <div>
+                    <h1>Makro sin conexión</h1>
+                    <p>
+                        El sistema no tiene internet. Mientras vuelve la conexión,
+                        puedes jugar una partida de ajedrez.
+                    </p>
+                </div>
+
+                <button id="btnVolverPanel" class="btn-volver-panel">
+                    Volver al panel
+                </button>
+            </div>
+
+            <div class="offline-contenido">
+
+                <div class="panel-ajedrez">
+
+                    <div class="ajedrez-info">
+                        <h2>Ajedrez Makro</h2>
+                        <p id="turnoAjedrez">Turno: blancas</p>
+                    </div>
+
+                    <div id="tableroAjedrez" class="tablero-ajedrez">
+
+                        <div class="casilla blanca" data-pos="0">♜</div>
+                        <div class="casilla negra" data-pos="1">♞</div>
+                        <div class="casilla blanca" data-pos="2">♝</div>
+                        <div class="casilla negra" data-pos="3">♛</div>
+                        <div class="casilla blanca" data-pos="4">♚</div>
+                        <div class="casilla negra" data-pos="5">♝</div>
+                        <div class="casilla blanca" data-pos="6">♞</div>
+                        <div class="casilla negra" data-pos="7">♜</div>
+
+                        <div class="casilla negra" data-pos="8">♟</div>
+                        <div class="casilla blanca" data-pos="9">♟</div>
+                        <div class="casilla negra" data-pos="10">♟</div>
+                        <div class="casilla blanca" data-pos="11">♟</div>
+                        <div class="casilla negra" data-pos="12">♟</div>
+                        <div class="casilla blanca" data-pos="13">♟</div>
+                        <div class="casilla negra" data-pos="14">♟</div>
+                        <div class="casilla blanca" data-pos="15">♟</div>
+
+                        <div class="casilla blanca" data-pos="16"></div>
+                        <div class="casilla negra" data-pos="17"></div>
+                        <div class="casilla blanca" data-pos="18"></div>
+                        <div class="casilla negra" data-pos="19"></div>
+                        <div class="casilla blanca" data-pos="20"></div>
+                        <div class="casilla negra" data-pos="21"></div>
+                        <div class="casilla blanca" data-pos="22"></div>
+                        <div class="casilla negra" data-pos="23"></div>
+
+                        <div class="casilla negra" data-pos="24"></div>
+                        <div class="casilla blanca" data-pos="25"></div>
+                        <div class="casilla negra" data-pos="26"></div>
+                        <div class="casilla blanca" data-pos="27"></div>
+                        <div class="casilla negra" data-pos="28"></div>
+                        <div class="casilla blanca" data-pos="29"></div>
+                        <div class="casilla negra" data-pos="30"></div>
+                        <div class="casilla blanca" data-pos="31"></div>
+
+                        <div class="casilla blanca" data-pos="32"></div>
+                        <div class="casilla negra" data-pos="33"></div>
+                        <div class="casilla blanca" data-pos="34"></div>
+                        <div class="casilla negra" data-pos="35"></div>
+                        <div class="casilla blanca" data-pos="36"></div>
+                        <div class="casilla negra" data-pos="37"></div>
+                        <div class="casilla blanca" data-pos="38"></div>
+                        <div class="casilla negra" data-pos="39"></div>
+
+                        <div class="casilla negra" data-pos="40"></div>
+                        <div class="casilla blanca" data-pos="41"></div>
+                        <div class="casilla negra" data-pos="42"></div>
+                        <div class="casilla blanca" data-pos="43"></div>
+                        <div class="casilla negra" data-pos="44"></div>
+                        <div class="casilla blanca" data-pos="45"></div>
+                        <div class="casilla negra" data-pos="46"></div>
+                        <div class="casilla blanca" data-pos="47"></div>
+
+                        <div class="casilla blanca" data-pos="48">♙</div>
+                        <div class="casilla negra" data-pos="49">♙</div>
+                        <div class="casilla blanca" data-pos="50">♙</div>
+                        <div class="casilla negra" data-pos="51">♙</div>
+                        <div class="casilla blanca" data-pos="52">♙</div>
+                        <div class="casilla negra" data-pos="53">♙</div>
+                        <div class="casilla blanca" data-pos="54">♙</div>
+                        <div class="casilla negra" data-pos="55">♙</div>
+
+                        <div class="casilla negra" data-pos="56">♖</div>
+                        <div class="casilla blanca" data-pos="57">♘</div>
+                        <div class="casilla negra" data-pos="58">♗</div>
+                        <div class="casilla blanca" data-pos="59">♕</div>
+                        <div class="casilla negra" data-pos="60">♔</div>
+                        <div class="casilla blanca" data-pos="61">♗</div>
+                        <div class="casilla negra" data-pos="62">♘</div>
+                        <div class="casilla blanca" data-pos="63">♖</div>
+
+                    </div>
+
+                    <div class="acciones-ajedrez">
+                        <button id="btnReiniciarAjedrez">
+                            Reiniciar partida
+                        </button>
+
+                        <button id="btnSimularConexion">
+                            Simular regreso de conexión
+                        </button>
+                    </div>
+
+                </div>
+
+                <div class="offline-ayuda">
+                    <h3>Modo prueba</h3>
+                    <p>
+                        Este botón sirve para demostrar el modo offline sin tener que
+                        desconectar internet durante la exposición.
+                    </p>
+
+                    <ul>
+                        <li>Haz clic en una pieza.</li>
+                        <li>Luego haz clic en una casilla vacía o con otra pieza.</li>
+                        <li>El sistema moverá la pieza seleccionada.</li>
+                    </ul>
+
+                    <div class="estado-conexion">
+                        Estado: <strong id="estadoConexionTexto">Modo offline de prueba</strong>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <script src="/JS/MakroPL.js"></script>
+
+</body>
+
+</html>

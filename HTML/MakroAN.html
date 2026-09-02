@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Administrador Makro</title>
+    <link rel="stylesheet" href="/CSS/MakroAN.css">
+</head>
+
+<body>
+
+    <aside class="sidebar">
+
+        <div class="logo">
+            <h1>makro</h1>
+            <p>Tu aliado del ahorro al por mayor</p>
+        </div>
+
+        <nav class="menu">
+
+            <a href="#" class="activo" id="btnDashboard">
+                <span>🏠</span>
+                Dashboard
+            </a>
+
+            <p class="titulo-menu">GESTIÓN</p>
+
+            <a href="#" id="btnUsuarios">
+                <span>👥</span>
+                Usuarios
+            </a>
+
+            <a href="#" id="btnProductos">
+                <span>📦</span>
+                Productos
+            </a>
+
+            <a href="#" id="btnCategorias">
+                <span>📋</span>
+                Categorías
+            </a>
+
+            <a href="#" id="btnProveedores">
+                <span>🚚</span>
+                Proveedores
+            </a>
+
+            <a href="#">
+                <span>🏬</span>
+                Inventario
+            </a>
+            
+            <a href="#">
+                <span>⚙️</span>
+                Configuración
+            </a>
+
+            <a href="#">
+                <span>🔒</span>
+                Permisos
+            </a>
+
+        </nav>
+
+        <div class="promo">
+            <div class="promo-icono">🛒</div>
+            <h3>Compra más,<br>ahorra más</h3>
+            <p>Ofertas exclusivas para tu negocio</p>
+            <button>Ver ofertas</button>
+        </div>
+
+    </aside>
+
+    <main class="contenido">
+
+        <header class="topbar">
+
+            <button class="btn-menu">☰</button>
+
+            <div class="buscador">
+                <span>🔍</span>
+                <input type="text" placeholder="Buscar productos, usuarios, ventas...">
+            </div>
+
+            <div class="perfil">
+
+                <div class="notificacion">
+                    🔔
+                    <span>3</span>
+                </div>
+
+                <div class="avatar">👤</div>
+
+                <div class="info-admin">
+                    <h4>Administrador</h4>
+                    <p>Administrador</p>
+                </div>
+
+                <button id="btnCerrarSesion" class="btn-cerrar">
+                    Cerrar sesión
+                </button>
+
+            </div>
+
+        </header>
+
+        <section class="encabezado">
+
+            <div>
+                <h2 id="tituloPagina">Dashboard</h2>
+                <p id="descripcionPagina">Bienvenido al panel de administración de Makro</p>
+            </div>
+
+            <span class="fecha">
+                15 de mayo de 2026, 10:30 a. m.
+            </span>
+
+        </section>
+
+        <section id="seccionDashboard">
+
+            <section class="cards">
+
+                <div class="card">
+                    <div class="icono azul">🛒</div>
+                    <div>
+                        <p>Ventas hoy</p>
+                        <h3>S/ 45,280.50</h3>
+                        <span class="verde">↑ 12.5% vs ayer</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="icono verde-bg">📦</div>
+                    <div>
+                        <p>Productos</p>
+                        <h3>2,548</h3>
+                        <span>Total en catálogo</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="icono amarillo">👥</div>
+                    <div>
+                        <p>Usuarios</p>
+                        <h3>156</h3>
+                        <span>Activos</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="icono morado">🏪</div>
+                    <div>
+                        <p>Sucursales</p>
+                        <h3>23</h3>
+                        <span>En todo el país</span>
+                    </div>
+                </div>
+
+            </section>
+
+            <section class="grid-principal">
+
+                <div class="panel grafico-linea">
+
+                    <div class="panel-header">
+                        <h3>Ventas de los últimos 7 días</h3>
+                        <a href="#">Ver reporte</a>
+                    </div>
+
+                    <div class="grafico-falso">
+                        <div class="linea-grafico"></div>
+
+                        <div class="puntos-grafico">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+
+                        <div class="dias">
+                            <span>9 May</span>
+                            <span>10 May</span>
+                            <span>11 May</span>
+                            <span>12 May</span>
+                            <span>13 May</span>
+                            <span>14 May</span>
+                            <span>15 May</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="panel">
+
+                    <div class="panel-header">
+                        <h3>Ventas por categoría</h3>
+                        <a href="#">Ver reporte</a>
+                    </div>
+
+                    <div class="categorias">
+
+                        <div class="donut"></div>
+
+                        <div class="lista-categorias">
+
+                            <p><span class="cuadro azul-bg"></span>Alimentos <b>40%</b></p>
+                            <p><span class="cuadro verde-bg"></span>Bebidas <b>25%</b></p>
+                            <p><span class="cuadro amarillo-bg"></span>Limpieza <b>15%</b></p>
+                            <p><span class="cuadro morado-bg"></span>Cuidado personal <b>10%</b></p>
+                            <p><span class="cuadro gris-bg"></span>Otros <b>10%</b></p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <section class="grid-principal">
+
+                <div class="panel">
+
+                    <div class="panel-header">
+                        <h3>Últimas ventas</h3>
+                        <a href="#">Ver todas</a>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID Venta</th>
+                                <th>Fecha</th>
+                                <th>Cliente</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <tr>
+                                <td>#VTA-000125</td>
+                                <td>15/05/2026 10:15</td>
+                                <td>Restaurante La Sazón</td>
+                                <td>S/ 2,350.00</td>
+                                <td><span class="estado completada">Completada</span></td>
+                            </tr>
+
+                            <tr>
+                                <td>#VTA-000124</td>
+                                <td>15/05/2026 09:47</td>
+                                <td>Hotel Los Andes</td>
+                                <td>S/ 5,780.50</td>
+                                <td><span class="estado completada">Completada</span></td>
+                            </tr>
+
+                            <tr>
+                                <td>#VTA-000123</td>
+                                <td>14/05/2026 16:32</td>
+                                <td>Bodega San Martín</td>
+                                <td>S/ 1,230.00</td>
+                                <td><span class="estado pendiente">Pendiente</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+
+                <div class="panel">
+
+                    <div class="panel-header">
+                        <h3>Alertas y notificaciones</h3>
+                        <a href="#">Ver todas</a>
+                    </div>
+
+                    <div class="alertas">
+
+                        <div class="alerta">
+                            <div class="alerta-icono warning">⚠️</div>
+                            <div>
+                                <h4>Stock bajo en 15 productos</h4>
+                                <p>Revisa los productos con inventario bajo</p>
+                            </div>
+                            <span>Hace 10 min</span>
+                        </div>
+
+                        <div class="alerta">
+                            <div class="alerta-icono info">ℹ️</div>
+                            <div>
+                                <h4>Nueva venta mayorista</h4>
+                                <p>Venta #VTA-000125 por S/ 2,350.00</p>
+                            </div>
+                            <span>Hace 15 min</span>
+                        </div>
+
+                        <div class="alerta">
+                            <div class="alerta-icono ok">✅</div>
+                            <div>
+                                <h4>Usuario registrado</h4>
+                                <p>Nuevo usuario: juan.perez@makro.com</p>
+                            </div>
+                            <span>Hace 30 min</span>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+        </section>
+
+        <section id="seccionUsuarios" style="display:none;">
+
+            <section class="usuarios-layout">
+
+                <div class="panel">
+
+                    <div class="panel-header">
+                        <h3>Crear usuario</h3>
+                    </div>
+
+                    <form id="formCrearUsuario" class="form-admin">
+
+                        <label for="correoUsuario">Correo electrónico</label>
+                        <input type="email" id="correoUsuario" placeholder="usuario@correo.com" required>
+
+                        <label for="passUsuario">Contraseña</label>
+                        <input type="password" id="passUsuario" placeholder="Ingrese contraseña" required>
+
+                        <label for="rolUsuario">Rol</label>
+                        <select id="rolUsuario" required>
+                            <option value="0">Trabajador</option>
+                            <option value="1">Administrador</option>
+                        </select>
+
+                        <button type="submit">
+                            Crear usuario
+                        </button>
+
+                    </form>
+
+                </div>
+
+                <div class="panel">
+
+                    <div class="panel-header">
+                        <h3>Usuarios registrados</h3>
+                        <button id="btnActualizarUsuarios" class="btn-actualizar">
+                            Actualizar
+                        </button>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Correo</th>
+                                <th>Rol</th>
+                                <th>Fecha creación</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="tablaUsuarios">
+                            <tr>
+                                <td colspan="4">Cargando usuarios...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+
+            </section>
+
+        </section>
+
+        <section id="seccionProductos" style="display:none;">
+
+            <section class="productos-layout">
+
+                <div class="panel">
+
+                    <div class="panel-header">
+                        <h3>Agregar producto</h3>
+                    </div>
+
+                    <form id="formCrearProducto" class="form-admin" enctype="multipart/form-data">
+
+                        <label for="nombreProducto">Nombre del producto</label>
+                        <input type="text" id="nombreProducto" placeholder="Ej: Arroz Costeño 5kg" required>
+
+                        <label for="categoriaProducto">Categoría</label>
+                        <select id="categoriaProducto" required>
+                            <option value="">Seleccione categoría</option>
+                            <option value="Alimentos">Alimentos</option>
+                            <option value="Bebidas">Bebidas</option>
+                            <option value="Limpieza">Limpieza</option>
+                            <option value="Cuidado personal">Cuidado personal</option>
+                            <option value="Otros">Otros</option>
+                        </select>
+
+                        <label for="precioProducto">Precio</label>
+                        <input type="number" id="precioProducto" placeholder="Ej: 25.90" step="0.01" min="0" required>
+
+                        <label for="stockProducto">Stock</label>
+                        <input type="number" id="stockProducto" placeholder="Ej: 100" min="0" required>
+
+                        <label for="estadoProducto">Estado</label>
+                        <select id="estadoProducto" required>
+                            <option value="Activo">Activo</option>
+                            <option value="Agotado">Agotado</option>
+                            <option value="Inactivo">Inactivo</option>
+                        </select>
+
+                        <label for="imagenProducto">Imagen del producto</label>
+                        <input type="file" id="imagenProducto" accept="image/*" required>
+
+                        <div class="preview-producto">
+                            <img id="previewImagenProducto" src="/IMG/producto-default.png" alt="Vista previa">
+                        </div>
+
+                        <button type="submit">
+                            Guardar producto
+                        </button>
+
+                    </form>
+
+                </div>
+
+                <div class="panel">
+
+                    <div class="panel-header">
+                        <h3>Productos registrados</h3>
+
+                        <button id="btnActualizarProductos" class="btn-actualizar">
+                            Actualizar
+                        </button>
+                    </div>
+
+                    <div class="productos-grid" id="listaProductos">
+
+                        <div class="producto-vacio">
+                            Cargando productos...
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+        </section>
+
+        <section id="seccionCategorias" style="display:none;">
+
+            <section class="categorias-admin-layout">
+
+                <div class="panel">
+
+                    <div class="panel-header">
+                        <h3>Resumen por categorías</h3>
+
+                        <button id="btnActualizarCategorias" class="btn-actualizar">
+                            Actualizar
+                        </button>
+                    </div>
+
+                    <div class="cards-categorias-admin">
+
+                        <div class="categoria-card-admin">
+                            <div class="categoria-icono alimentos">🍚</div>
+                            <div>
+                                <h3>Alimentos</h3>
+                                <p id="totalAlimentos">0 productos</p>
+                            </div>
+                        </div>
+
+                        <div class="categoria-card-admin">
+                            <div class="categoria-icono bebidas">🥤</div>
+                            <div>
+                                <h3>Bebidas</h3>
+                                <p id="totalBebidas">0 productos</p>
+                            </div>
+                        </div>
+
+                        <div class="categoria-card-admin">
+                            <div class="categoria-icono limpieza">🧼</div>
+                            <div>
+                                <h3>Limpieza</h3>
+                                <p id="totalLimpieza">0 productos</p>
+                            </div>
+                        </div>
+
+                        <div class="categoria-card-admin">
+                            <div class="categoria-icono cuidado">🧴</div>
+                            <div>
+                                <h3>Cuidado personal</h3>
+                                <p id="totalCuidado">0 productos</p>
+                            </div>
+                        </div>
+
+                        <div class="categoria-card-admin">
+                            <div class="categoria-icono otros">📦</div>
+                            <div>
+                                <h3>Otros</h3>
+                                <p id="totalOtros">0 productos</p>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="panel">
+
+                    <div class="panel-header">
+                        <h3>Filtrar productos</h3>
+                    </div>
+
+                    <div class="filtros-categorias">
+
+                        <select id="filtroCategoria">
+                            <option value="Todos">Todos los productos</option>
+                            <option value="Alimentos">Alimentos</option>
+                            <option value="Bebidas">Bebidas</option>
+                            <option value="Limpieza">Limpieza</option>
+                            <option value="Cuidado personal">Cuidado personal</option>
+                            <option value="Otros">Otros</option>
+                        </select>
+
+                        <select id="filtroStock">
+                            <option value="Todos">Todo el stock</option>
+                            <option value="Bajo">Stock bajo</option>
+                            <option value="SinStock">Sin stock</option>
+                        </select>
+
+                    </div>
+
+                </div>
+
+                <div class="panel panel-stock-bajo">
+
+                    <div class="panel-header">
+                        <h3>Alertas de stock bajo</h3>
+                    </div>
+
+                    <div id="alertasStockBajo" class="alertas-stock">
+                        No hay productos con stock bajo.
+                    </div>
+
+                </div>
+
+                <div class="panel panel-productos-filtrados">
+
+                    <div class="panel-header">
+                        <h3>Productos por categoría</h3>
+                        <p id="contadorProductosCategoria">0 productos encontrados</p>
+                    </div>
+
+                    <div id="productosPorCategoria" class="productos-grid">
+                        <div class="producto-vacio">
+                            Selecciona una categoría para ver productos
+                        </div>
+                    </div>
+
+                </div>
+
+            </section>
+
+        </section>
+
+        <section id="seccionProveedores" style="display:none;">
+
+            <section class="proveedores-layout">
+
+                <div class="panel">
+
+                    <div class="panel-header">
+                        <h3>Registrar proveedor</h3>
+                    </div>
+
+                    <form id="formCrearProveedor" class="form-admin">
+
+                        <label for="nombreProveedor">Nombre de la empresa</label>
+                        <input type="text" id="nombreProveedor" placeholder="Ej: Alicorp" required>
+
+                        <label for="categoriaProveedor">Categoría</label>
+                        <select id="categoriaProveedor" required>
+                            <option value="">Seleccione categoría</option>
+                            <option value="Abarrotes y alimentos">Abarrotes y alimentos</option>
+                            <option value="Bebidas">Bebidas</option>
+                            <option value="Bebidas energéticas">Bebidas energéticas</option>
+                            <option value="Lácteos">Lácteos</option>
+                            <option value="Carnes y congelados">Carnes y congelados</option>
+                            <option value="Limpieza">Limpieza</option>
+                            <option value="Cuidado personal">Cuidado personal</option>
+                            <option value="Otros">Otros</option>
+                        </select>
+
+                        <label for="contactoProveedor">Contacto</label>
+                        <input type="text" id="contactoProveedor" placeholder="Ej: Área comercial">
+
+                        <label for="telefonoProveedor">Teléfono</label>
+                        <input type="text" id="telefonoProveedor" placeholder="Ej: 999999999">
+
+                        <label for="correoProveedor">Correo</label>
+                        <input type="email" id="correoProveedor" placeholder="proveedor@empresa.com">
+
+                        <label for="entregasProveedor">Entregas registradas en 2026</label>
+                        <input type="number" id="entregasProveedor" min="0" value="0" required>
+
+                        <label for="proximaEntregaProveedor">Próxima entrega</label>
+                        <input type="date" id="proximaEntregaProveedor" required>
+
+                        <label for="estadoProveedor">Estado</label>
+                        <select id="estadoProveedor" required>
+                            <option value="Activo">Activo</option>
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="Inactivo">Inactivo</option>
+                        </select>
+
+                        <button type="submit">
+                            Guardar proveedor
+                        </button>
+
+                    </form>
+
+                </div>
+
+                <div class="panel">
+
+                    <div class="panel-header">
+                        <h3>Proveedores registrados</h3>
+
+                        <button id="btnActualizarProveedores" class="btn-actualizar">
+                            Actualizar
+                        </button>
+                    </div>
+
+                    <div class="proveedores-resumen">
+
+                        <div class="proveedor-mini-card">
+                            <h4>Total proveedores</h4>
+                            <p id="totalProveedores">0</p>
+                        </div>
+
+                        <div class="proveedor-mini-card">
+                            <h4>Entregas 2026</h4>
+                            <p id="totalEntregas2026">0</p>
+                        </div>
+
+                        <div class="proveedor-mini-card">
+                            <h4>Próximas entregas</h4>
+                            <p id="totalProximasEntregas">0</p>
+                        </div>
+
+                    </div>
+
+                    <div class="tabla-scroll">
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Empresa</th>
+                                    <th>Categoría</th>
+                                    <th>Contacto</th>
+                                    <th>Entregas 2026</th>
+                                    <th>Próxima entrega</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="tablaProveedores">
+                                <tr>
+                                    <td colspan="6">Cargando proveedores...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+        </section>
+
+        <footer>
+            <p>© 2026 Makro. Todos los derechos reservados.</p>
+            <p>Versión 1.0.0</p>
+        </footer>
+
+    </main>
+
+    <script src="/JS/MakroAN.js"></script>
+
+</body>
+</html>
