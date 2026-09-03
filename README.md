@@ -12,7 +12,7 @@ El sistema permite administrar usuarios, productos, proveedores, inventario y ve
 
 ### Inicio de sesión
 
-![Inicio de sesión](docs/screenshots/Login.png)
+![Inicio de sesión](docs/screenshots/Login_MKR.png)
 
 ### Panel de administración
 
