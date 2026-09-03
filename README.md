@@ -8,6 +8,22 @@ El sistema permite administrar usuarios, productos, proveedores, inventario y ve
 
 ---
 
+## Capturas del sistema
+
+### Inicio de sesión
+
+![Inicio de sesión](docs/screenshots/Login.png)
+
+### Panel de administración
+
+![Panel de administración](docs/screenshots/Panel_Administrador.png)
+
+### Panel de trabajador
+
+![Panel de trabajador](docs/screenshots/panel_trabajador.png)
+
+---
+
 ## Características
 
 - Inicio de sesión de usuarios
@@ -73,4 +89,4 @@ Node.js + Express
    │ API / consultas
    ↓
 SQL Server
-```
+```git status
