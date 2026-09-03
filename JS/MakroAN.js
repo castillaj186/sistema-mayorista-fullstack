@@ -1,9 +1,5 @@
 const btnCerrarSesion = document.getElementById("btnCerrarSesion");
 
-btnCerrarSesion.addEventListener("click", () => {
-    window.location.href = "/";
-});
-
 const btnDashboard = document.getElementById("btnDashboard");
 const btnUsuarios = document.getElementById("btnUsuarios");
 const btnProductos = document.getElementById("btnProductos");
@@ -42,8 +38,6 @@ const totalLimpieza = document.getElementById("totalLimpieza");
 const totalCuidado = document.getElementById("totalCuidado");
 const totalOtros = document.getElementById("totalOtros");
 
-let productosGlobal = [];
-
 const formCrearProveedor = document.getElementById("formCrearProveedor");
 const tablaProveedores = document.getElementById("tablaProveedores");
 const btnActualizarProveedores = document.getElementById("btnActualizarProveedores");
@@ -52,205 +46,513 @@ const totalProveedores = document.getElementById("totalProveedores");
 const totalEntregas2026 = document.getElementById("totalEntregas2026");
 const totalProximasEntregas = document.getElementById("totalProximasEntregas");
 
-btnDashboard.addEventListener("click", (e) => {
-    e.preventDefault();
+let productosGlobal = [];
 
-    ocultarSecciones();
+function obtenerToken() {
+    return (
+        localStorage.getItem("token") ||
+        sessionStorage.getItem("token")
+    );
+}
 
-    seccionDashboard.style.display = "block";
+function obtenerUsuario() {
+    const usuarioGuardado =
+        localStorage.getItem("usuario") ||
+        sessionStorage.getItem("usuario");
 
-    tituloPagina.textContent = "Dashboard";
-    descripcionPagina.textContent =
-        "Bienvenido al panel de administración de Makro";
+    if (!usuarioGuardado) {
+        return null;
+    }
 
-    activarMenu(btnDashboard);
-});
+    try {
+        return JSON.parse(usuarioGuardado);
+    } catch {
+        return null;
+    }
+}
 
-btnUsuarios.addEventListener("click", async (e) => {
-    e.preventDefault();
+function limpiarSesion() {
+    localStorage.removeItem("token");
+    localStorage.removeItem("usuario");
+    localStorage.removeItem("rol");
 
-    ocultarSecciones();
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("usuario");
+    sessionStorage.removeItem("rol");
+}
 
-    seccionUsuarios.style.display = "block";
+function redirigirLogin() {
+    limpiarSesion();
+    window.location.href = "/";
+}
 
-    tituloPagina.textContent = "Usuarios";
-    descripcionPagina.textContent =
-        "Administración de usuarios del sistema";
+function escaparHtml(valor) {
+    return String(valor ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
 
-    activarMenu(btnUsuarios);
+async function apiFetch(url, opciones = {}) {
+    const token = obtenerToken();
 
-    await cargarUsuarios();
-});
+    if (!token) {
+        redirigirLogin();
+        throw new Error("No existe una sesión activa.");
+    }
 
-btnProductos.addEventListener("click", async (e) => {
-    e.preventDefault();
+    const headers = new Headers(
+        opciones.headers || {}
+    );
 
-    ocultarSecciones();
+    headers.set(
+        "Authorization",
+        `Bearer ${token}`
+    );
 
-    seccionProductos.style.display = "block";
+    const respuesta = await fetch(
+        url,
+        {
+            ...opciones,
+            headers
+        }
+    );
 
-    tituloPagina.textContent = "Productos";
-    descripcionPagina.textContent =
-        "Gestión y registro de productos Makro";
+    if (respuesta.status === 401) {
+        limpiarSesion();
 
-    activarMenu(btnProductos);
+        alert(
+            "Tu sesión ha expirado. Inicia sesión nuevamente."
+        );
 
-    await cargarProductos();
-});
+        window.location.href = "/";
 
-btnCategorias.addEventListener("click", async (e) => {
-    e.preventDefault();
+        throw new Error(
+            "Sesión expirada."
+        );
+    }
 
-    ocultarSecciones();
+    if (respuesta.status === 403) {
+        alert(
+            "No tienes permisos para realizar esta acción."
+        );
 
-    seccionCategorias.style.display = "block";
+        limpiarSesion();
 
-    tituloPagina.textContent = "Categorías";
-    descripcionPagina.textContent =
-        "Filtrado de productos por categoría y alertas de stock bajo";
+        window.location.href = "/";
 
-    activarMenu(btnCategorias);
+        throw new Error(
+            "Acceso no autorizado."
+        );
+    }
 
-    await cargarCategorias();
-});
+    return respuesta;
+}
 
-btnProveedores.addEventListener("click", async (e) => {
-    e.preventDefault();
+async function obtenerJsonSeguro(respuesta) {
+    try {
+        return await respuesta.json();
+    } catch {
+        return {};
+    }
+}
 
-    ocultarSecciones();
+async function verificarAdministrador() {
+    const token = obtenerToken();
 
-    seccionProveedores.style.display = "block";
+    if (!token) {
+        redirigirLogin();
+        return false;
+    }
 
-    tituloPagina.textContent = "Proveedores";
-    descripcionPagina.textContent =
-        "Gestión de empresas proveedoras y próximas entregas";
+    try {
+        const respuesta = await fetch(
+            "/auth/admin",
+            {
+                method: "GET",
+                headers: {
+                    Authorization:
+                        `Bearer ${token}`
+                }
+            }
+        );
 
-    activarMenu(btnProveedores);
+        if (!respuesta.ok) {
+            limpiarSesion();
 
-    await cargarProveedores();
-});
+            alert(
+                "Debes iniciar sesión como administrador."
+            );
+
+            window.location.href = "/";
+
+            return false;
+        }
+
+        const datos =
+            await obtenerJsonSeguro(
+                respuesta
+            );
+
+        if (
+            !datos.usuario ||
+            Number(datos.usuario.rol) !== 1
+        ) {
+            limpiarSesion();
+
+            window.location.href = "/";
+
+            return false;
+        }
+
+        return true;
+
+    } catch (error) {
+        console.error(
+            "Error verificando administrador:",
+            error
+        );
+
+        alert(
+            "No se pudo verificar tu sesión."
+        );
+
+        window.location.href = "/";
+
+        return false;
+    }
+}
 
 function ocultarSecciones() {
-    seccionDashboard.style.display = "none";
-    seccionUsuarios.style.display = "none";
-    seccionProductos.style.display = "none";
-    seccionCategorias.style.display = "none";
-    seccionProveedores.style.display = "none";
+    if (seccionDashboard) {
+        seccionDashboard.style.display =
+            "none";
+    }
+
+    if (seccionUsuarios) {
+        seccionUsuarios.style.display =
+            "none";
+    }
+
+    if (seccionProductos) {
+        seccionProductos.style.display =
+            "none";
+    }
+
+    if (seccionCategorias) {
+        seccionCategorias.style.display =
+            "none";
+    }
+
+    if (seccionProveedores) {
+        seccionProveedores.style.display =
+            "none";
+    }
 }
 
 function activarMenu(botonActivo) {
-    document.querySelectorAll(".menu a").forEach((btn) => {
-        btn.classList.remove("activo");
-    });
+    document
+        .querySelectorAll(".menu a")
+        .forEach(boton => {
+            boton.classList.remove(
+                "activo"
+            );
+        });
 
-    botonActivo.classList.add("activo");
+    if (botonActivo) {
+        botonActivo.classList.add(
+            "activo"
+        );
+    }
 }
 
 async function cargarUsuarios() {
+    if (!tablaUsuarios) {
+        return;
+    }
+
     try {
         tablaUsuarios.innerHTML = `
             <tr>
-                <td colspan="4">Cargando usuarios...</td>
+                <td colspan="4">
+                    Cargando usuarios...
+                </td>
             </tr>
         `;
 
-        const res = await fetch("/usuarios");
-        const usuarios = await res.json();
+        const respuesta =
+            await apiFetch(
+                "/usuarios"
+            );
+
+        const usuarios =
+            await obtenerJsonSeguro(
+                respuesta
+            );
+
+        if (!respuesta.ok) {
+            throw new Error(
+                usuarios.mensaje ||
+                "No se pudieron cargar los usuarios."
+            );
+        }
 
         tablaUsuarios.innerHTML = "";
 
-        if (usuarios.length === 0) {
+        if (
+            !Array.isArray(usuarios) ||
+            usuarios.length === 0
+        ) {
             tablaUsuarios.innerHTML = `
                 <tr>
-                    <td colspan="4">No hay usuarios registrados</td>
+                    <td colspan="4">
+                        No hay usuarios registrados
+                    </td>
                 </tr>
             `;
+
             return;
         }
 
-        usuarios.forEach((usuario) => {
-            const rolTexto = usuario.rol == 1 ? "Administrador" : "Trabajador";
-            const claseRol = usuario.rol == 1 ? "rol-admin" : "rol-trabajador";
+        usuarios.forEach(usuario => {
+            const rol =
+                Number(usuario.rol);
+
+            const rolTexto =
+                rol === 1
+                    ? "Administrador"
+                    : "Trabajador";
+
+            const claseRol =
+                rol === 1
+                    ? "rol-admin"
+                    : "rol-trabajador";
+
+            const fecha =
+                usuario.fecha_creacion
+                    ? new Date(
+                        usuario.fecha_creacion
+                    ).toLocaleString()
+                    : "Sin fecha";
 
             tablaUsuarios.innerHTML += `
                 <tr>
-                    <td>${usuario.id}</td>
-                    <td>${usuario.correo}</td>
+                    <td>
+                        ${escaparHtml(usuario.id)}
+                    </td>
+
+                    <td>
+                        ${escaparHtml(usuario.correo)}
+                    </td>
+
                     <td>
                         <span class="${claseRol}">
                             ${rolTexto}
                         </span>
                     </td>
-                    <td>${new Date(usuario.fecha_creacion).toLocaleString()}</td>
+
+                    <td>
+                        ${escaparHtml(fecha)}
+                    </td>
                 </tr>
             `;
         });
 
     } catch (error) {
-        console.log(error);
+        console.error(
+            "Error cargando usuarios:",
+            error
+        );
 
         tablaUsuarios.innerHTML = `
             <tr>
-                <td colspan="4">Error al cargar usuarios</td>
+                <td colspan="4">
+                    Error al cargar usuarios
+                </td>
             </tr>
         `;
     }
 }
 
-formCrearUsuario.addEventListener("submit", async (e) => {
-    e.preventDefault();
+async function crearUsuario(evento) {
+    evento.preventDefault();
 
-    const correo = document.getElementById("correoUsuario").value;
-    const contrasena = document.getElementById("passUsuario").value;
-    const rol = document.getElementById("rolUsuario").value;
+    const inputCorreo =
+        document.getElementById(
+            "correoUsuario"
+        );
+
+    const inputContrasena =
+        document.getElementById(
+            "passUsuario"
+        );
+
+    const inputRol =
+        document.getElementById(
+            "rolUsuario"
+        );
+
+    const correo =
+        inputCorreo?.value
+            .trim()
+            .toLowerCase();
+
+    const contrasena =
+        inputContrasena?.value;
+
+    const rol =
+        Number(
+            inputRol?.value
+        );
+
+    if (
+        !correo ||
+        !contrasena
+    ) {
+        alert(
+            "Completa el correo y la contraseña."
+        );
+
+        return;
+    }
+
+    if (
+        rol !== 0 &&
+        rol !== 1
+    ) {
+        alert(
+            "Selecciona un rol válido."
+        );
+
+        return;
+    }
 
     try {
-        const res = await fetch("/usuarios", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                correo,
-                contrasena,
-                rol
-            })
-        });
+        const respuesta =
+            await apiFetch(
+                "/usuarios",
+                {
+                    method: "POST",
 
-        const data = await res.json();
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
 
-        alert(data.mensaje);
+                    body:
+                        JSON.stringify({
+                            correo,
+                            contrasena,
+                            rol
+                        })
+                }
+            );
 
-        if (!res.ok) {
+        const datos =
+            await obtenerJsonSeguro(
+                respuesta
+            );
+
+        alert(
+            datos.mensaje ||
+            (
+                respuesta.ok
+                    ? "Usuario creado correctamente."
+                    : "No se pudo crear el usuario."
+            )
+        );
+
+        if (!respuesta.ok) {
             return;
         }
 
-        formCrearUsuario.reset();
+        formCrearUsuario?.reset();
 
         await cargarUsuarios();
 
     } catch (error) {
-        console.log(error);
-        alert("Error al crear usuario");
+        console.error(
+            "Error creando usuario:",
+            error
+        );
+
+        if (
+            error.message !==
+            "Sesión expirada."
+        ) {
+            alert(
+                "Error al crear usuario."
+            );
+        }
     }
-});
+}
 
-btnActualizarUsuarios.addEventListener("click", async () => {
-    await cargarUsuarios();
-});
-
-inputImagenProducto.addEventListener("change", () => {
-    const archivo = inputImagenProducto.files[0];
-
-    if (!archivo) {
-        previewImagenProducto.src = "/IMG/producto-default.png";
+function previsualizarImagenProducto() {
+    if (
+        !inputImagenProducto ||
+        !previewImagenProducto
+    ) {
         return;
     }
 
-    previewImagenProducto.src = URL.createObjectURL(archivo);
-});
+    const archivo =
+        inputImagenProducto.files?.[0];
+
+    if (!archivo) {
+        previewImagenProducto.src =
+            "/IMG/producto-default.png";
+
+        return;
+    }
+
+    if (
+        ![
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+        ].includes(archivo.type)
+    ) {
+        alert(
+            "Selecciona una imagen JPG, PNG o WEBP."
+        );
+
+        inputImagenProducto.value = "";
+
+        previewImagenProducto.src =
+            "/IMG/producto-default.png";
+
+        return;
+    }
+
+    if (
+        archivo.size >
+        5 * 1024 * 1024
+    ) {
+        alert(
+            "La imagen no puede superar los 5 MB."
+        );
+
+        inputImagenProducto.value = "";
+
+        previewImagenProducto.src =
+            "/IMG/producto-default.png";
+
+        return;
+    }
+
+    previewImagenProducto.src =
+        URL.createObjectURL(
+            archivo
+        );
+}
 
 async function cargarProductos() {
+    if (!listaProductos) {
+        return;
+    }
+
     try {
         listaProductos.innerHTML = `
             <div class="producto-vacio">
@@ -258,26 +560,50 @@ async function cargarProductos() {
             </div>
         `;
 
-        const res = await fetch("/productos");
-        const productos = await res.json();
+        const respuesta =
+            await apiFetch(
+                "/productos"
+            );
+
+        const productos =
+            await obtenerJsonSeguro(
+                respuesta
+            );
+
+        if (!respuesta.ok) {
+            throw new Error(
+                productos.mensaje ||
+                "No se pudieron cargar los productos."
+            );
+        }
 
         listaProductos.innerHTML = "";
 
-        if (productos.length === 0) {
+        if (
+            !Array.isArray(productos) ||
+            productos.length === 0
+        ) {
             listaProductos.innerHTML = `
                 <div class="producto-vacio">
                     No hay productos registrados
                 </div>
             `;
+
             return;
         }
 
-        productos.forEach((producto) => {
-            listaProductos.innerHTML += crearCardProducto(producto);
+        productos.forEach(producto => {
+            listaProductos.innerHTML +=
+                crearCardProducto(
+                    producto
+                );
         });
 
     } catch (error) {
-        console.log(error);
+        console.error(
+            "Error cargando productos:",
+            error
+        );
 
         listaProductos.innerHTML = `
             <div class="producto-vacio">
@@ -288,55 +614,108 @@ async function cargarProductos() {
 }
 
 function crearCardProducto(producto) {
-    const imagen = producto.imagen
-        ? producto.imagen
-        : "/IMG/producto-default.png";
+    const imagen =
+        producto.imagen
+            ? escaparHtml(
+                producto.imagen
+            )
+            : "/IMG/producto-default.png";
+
+    const estado =
+        String(
+            producto.estado || ""
+        );
+
+    const estadoNormalizado =
+        estado.toLowerCase();
 
     const estadoClase =
-        producto.estado === "Activo"
+        (
+            estadoNormalizado ===
+                "activo" ||
+            estadoNormalizado ===
+                "disponible"
+        )
             ? "producto-activo"
-            : producto.estado === "Agotado"
+            : estadoNormalizado ===
+                "agotado"
                 ? "producto-agotado"
                 : "producto-inactivo";
 
+    const stock =
+        Number(
+            producto.stock
+        );
+
     const stockClase =
-        Number(producto.stock) <= 10
+        stock <= 10
             ? "stock-bajo-texto"
             : "";
+
+    const precio =
+        Number(
+            producto.precio
+        );
+
+    const fecha =
+        producto.fecha_creacion
+            ? new Date(
+                producto.fecha_creacion
+            ).toLocaleString()
+            : "Sin fecha";
 
     return `
         <div class="producto-card">
 
-            <img src="${imagen}" alt="${producto.nombre}">
+            <img
+                src="${imagen}"
+                alt="${escaparHtml(producto.nombre)}"
+                onerror="this.src='/IMG/producto-default.png'"
+            >
 
             <div class="producto-info">
 
                 <div class="producto-top">
-                    <h3>${producto.nombre}</h3>
+
+                    <h3>
+                        ${escaparHtml(producto.nombre)}
+                    </h3>
+
                     <span class="${estadoClase}">
-                        ${producto.estado}
+                        ${escaparHtml(estado)}
                     </span>
+
                 </div>
 
                 <p class="producto-categoria">
-                    ${producto.categoria}
+                    ${escaparHtml(producto.categoria)}
                 </p>
 
                 <div class="producto-datos">
+
                     <p>
                         <b>Precio:</b>
-                        S/ ${Number(producto.precio).toFixed(2)}
+                        S/ ${
+                            Number.isFinite(precio)
+                                ? precio.toFixed(2)
+                                : "0.00"
+                        }
                     </p>
 
                     <p class="${stockClase}">
                         <b>Stock:</b>
-                        ${producto.stock}
+                        ${
+                            Number.isFinite(stock)
+                                ? stock
+                                : 0
+                        }
                     </p>
+
                 </div>
 
                 <p class="producto-fecha">
                     Creado:
-                    ${new Date(producto.fecha_creacion).toLocaleString()}
+                    ${escaparHtml(fecha)}
                 </p>
 
             </div>
@@ -345,55 +724,148 @@ function crearCardProducto(producto) {
     `;
 }
 
-formCrearProducto.addEventListener("submit", async (e) => {
-    e.preventDefault();
+async function crearProducto(evento) {
+    evento.preventDefault();
 
-    const nombre = document.getElementById("nombreProducto").value;
-    const categoria = document.getElementById("categoriaProducto").value;
-    const precio = document.getElementById("precioProducto").value;
-    const stock = document.getElementById("stockProducto").value;
-    const estado = document.getElementById("estadoProducto").value;
-    const imagen = document.getElementById("imagenProducto").files[0];
+    const nombre =
+        document.getElementById(
+            "nombreProducto"
+        )?.value.trim();
 
-    const datos = new FormData();
+    const categoria =
+        document.getElementById(
+            "categoriaProducto"
+        )?.value;
 
-    datos.append("nombre", nombre);
-    datos.append("categoria", categoria);
-    datos.append("precio", precio);
-    datos.append("stock", stock);
-    datos.append("estado", estado);
-    datos.append("imagen", imagen);
+    const precio =
+        document.getElementById(
+            "precioProducto"
+        )?.value;
+
+    const stock =
+        document.getElementById(
+            "stockProducto"
+        )?.value;
+
+    const estado =
+        document.getElementById(
+            "estadoProducto"
+        )?.value;
+
+    const imagen =
+        document.getElementById(
+            "imagenProducto"
+        )?.files?.[0];
+
+    if (
+        !nombre ||
+        !categoria ||
+        precio === "" ||
+        stock === ""
+    ) {
+        alert(
+            "Completa los datos obligatorios del producto."
+        );
+
+        return;
+    }
+
+    const datos =
+        new FormData();
+
+    datos.append(
+        "nombre",
+        nombre
+    );
+
+    datos.append(
+        "categoria",
+        categoria
+    );
+
+    datos.append(
+        "precio",
+        precio
+    );
+
+    datos.append(
+        "stock",
+        stock
+    );
+
+    datos.append(
+        "estado",
+        estado || ""
+    );
+
+    if (imagen) {
+        datos.append(
+            "imagen",
+            imagen
+        );
+    }
 
     try {
-        const res = await fetch("/productos", {
-            method: "POST",
-            body: datos
-        });
+        const respuesta =
+            await apiFetch(
+                "/productos",
+                {
+                    method: "POST",
+                    body: datos
+                }
+            );
 
-        const data = await res.json();
+        const resultado =
+            await obtenerJsonSeguro(
+                respuesta
+            );
 
-        alert(data.mensaje);
+        alert(
+            resultado.mensaje ||
+            (
+                respuesta.ok
+                    ? "Producto creado correctamente."
+                    : "No se pudo crear el producto."
+            )
+        );
 
-        if (!res.ok) {
+        if (!respuesta.ok) {
             return;
         }
 
-        formCrearProducto.reset();
-        previewImagenProducto.src = "/IMG/producto-default.png";
+        formCrearProducto?.reset();
+
+        if (
+            previewImagenProducto
+        ) {
+            previewImagenProducto.src =
+                "/IMG/producto-default.png";
+        }
 
         await cargarProductos();
 
     } catch (error) {
-        console.log(error);
-        alert("Error al crear producto");
-    }
-});
+        console.error(
+            "Error creando producto:",
+            error
+        );
 
-btnActualizarProductos.addEventListener("click", async () => {
-    await cargarProductos();
-});
+        if (
+            error.message !==
+            "Sesión expirada."
+        ) {
+            alert(
+                "Error al crear producto."
+            );
+        }
+    }
+}
 
 async function cargarCategorias() {
+    if (!productosPorCategoria) {
+        return;
+    }
+
     try {
         productosPorCategoria.innerHTML = `
             <div class="producto-vacio">
@@ -401,15 +873,39 @@ async function cargarCategorias() {
             </div>
         `;
 
-        const res = await fetch("/productos");
-        productosGlobal = await res.json();
+        const respuesta =
+            await apiFetch(
+                "/productos"
+            );
+
+        const productos =
+            await obtenerJsonSeguro(
+                respuesta
+            );
+
+        if (!respuesta.ok) {
+            throw new Error(
+                productos.mensaje ||
+                "No se pudieron cargar los productos."
+            );
+        }
+
+        productosGlobal =
+            Array.isArray(productos)
+                ? productos
+                : [];
 
         actualizarResumenCategorias();
+
         mostrarAlertasStockBajo();
+
         filtrarProductosCategoria();
 
     } catch (error) {
-        console.log(error);
+        console.error(
+            "Error cargando categorías:",
+            error
+        );
 
         productosPorCategoria.innerHTML = `
             <div class="producto-vacio">
@@ -420,239 +916,799 @@ async function cargarCategorias() {
 }
 
 function actualizarResumenCategorias() {
-    const alimentos = productosGlobal.filter(p => p.categoria === "Alimentos").length;
-    const bebidas = productosGlobal.filter(p => p.categoria === "Bebidas").length;
-    const limpieza = productosGlobal.filter(p => p.categoria === "Limpieza").length;
-    const cuidado = productosGlobal.filter(p => p.categoria === "Cuidado personal").length;
-    const otros = productosGlobal.filter(p => p.categoria === "Otros").length;
+    const contarCategoria =
+        nombre =>
+            productosGlobal.filter(
+                producto =>
+                    String(
+                        producto.categoria
+                    ).toLowerCase() ===
+                    nombre.toLowerCase()
+            ).length;
 
-    totalAlimentos.textContent = `${alimentos} productos`;
-    totalBebidas.textContent = `${bebidas} productos`;
-    totalLimpieza.textContent = `${limpieza} productos`;
-    totalCuidado.textContent = `${cuidado} productos`;
-    totalOtros.textContent = `${otros} productos`;
+    const alimentos =
+        contarCategoria(
+            "Alimentos"
+        );
+
+    const bebidas =
+        contarCategoria(
+            "Bebidas"
+        );
+
+    const limpieza =
+        contarCategoria(
+            "Limpieza"
+        );
+
+    const cuidado =
+        contarCategoria(
+            "Cuidado personal"
+        );
+
+    const otros =
+        contarCategoria(
+            "Otros"
+        );
+
+    if (totalAlimentos) {
+        totalAlimentos.textContent =
+            `${alimentos} productos`;
+    }
+
+    if (totalBebidas) {
+        totalBebidas.textContent =
+            `${bebidas} productos`;
+    }
+
+    if (totalLimpieza) {
+        totalLimpieza.textContent =
+            `${limpieza} productos`;
+    }
+
+    if (totalCuidado) {
+        totalCuidado.textContent =
+            `${cuidado} productos`;
+    }
+
+    if (totalOtros) {
+        totalOtros.textContent =
+            `${otros} productos`;
+    }
 }
 
 function mostrarAlertasStockBajo() {
-    const productosStockBajo = productosGlobal.filter(
-        producto => Number(producto.stock) <= 10
-    );
+    if (!alertasStockBajo) {
+        return;
+    }
 
-    if (productosStockBajo.length === 0) {
+    const productosStockBajo =
+        productosGlobal.filter(
+            producto =>
+                Number(
+                    producto.stock
+                ) <= 10
+        );
+
+    if (
+        productosStockBajo.length === 0
+    ) {
         alertasStockBajo.innerHTML = `
             <div class="stock-ok">
                 ✅ No hay productos con stock bajo
             </div>
         `;
+
         return;
     }
 
     alertasStockBajo.innerHTML = "";
 
-    productosStockBajo.forEach((producto) => {
-        alertasStockBajo.innerHTML += `
-            <div class="stock-alerta">
-                <div class="stock-alerta-icono">⚠️</div>
+    productosStockBajo.forEach(
+        producto => {
+            alertasStockBajo.innerHTML += `
+                <div class="stock-alerta">
 
-                <div>
-                    <h4>${producto.nombre}</h4>
-                    <p>
-                        Categoría: ${producto.categoria} |
-                        Stock actual: ${producto.stock}
-                    </p>
+                    <div class="stock-alerta-icono">
+                        ⚠️
+                    </div>
+
+                    <div>
+
+                        <h4>
+                            ${escaparHtml(producto.nombre)}
+                        </h4>
+
+                        <p>
+                            Categoría:
+                            ${escaparHtml(producto.categoria)}
+                            |
+                            Stock actual:
+                            ${escaparHtml(producto.stock)}
+                        </p>
+
+                    </div>
+
                 </div>
-            </div>
-        `;
-    });
+            `;
+        }
+    );
 }
 
 function filtrarProductosCategoria() {
-    const categoriaSeleccionada = filtroCategoria.value;
-    const stockSeleccionado = filtroStock.value;
-
-    let productosFiltrados = [...productosGlobal];
-
-    if (categoriaSeleccionada !== "Todos") {
-        productosFiltrados = productosFiltrados.filter(
-            producto => producto.categoria === categoriaSeleccionada
-        );
+    if (!productosPorCategoria) {
+        return;
     }
 
-    if (stockSeleccionado === "Bajo") {
-        productosFiltrados = productosFiltrados.filter(
-            producto => Number(producto.stock) <= 10 && Number(producto.stock) > 0
-        );
+    const categoriaSeleccionada =
+        filtroCategoria?.value ||
+        "Todos";
+
+    const stockSeleccionado =
+        filtroStock?.value ||
+        "Todos";
+
+    let productosFiltrados =
+        [...productosGlobal];
+
+    if (
+        categoriaSeleccionada !==
+        "Todos"
+    ) {
+        productosFiltrados =
+            productosFiltrados.filter(
+                producto =>
+                    producto.categoria ===
+                    categoriaSeleccionada
+            );
     }
 
-    if (stockSeleccionado === "SinStock") {
-        productosFiltrados = productosFiltrados.filter(
-            producto => Number(producto.stock) === 0
-        );
+    if (
+        stockSeleccionado ===
+        "Bajo"
+    ) {
+        productosFiltrados =
+            productosFiltrados.filter(
+                producto =>
+                    Number(
+                        producto.stock
+                    ) <= 10 &&
+                    Number(
+                        producto.stock
+                    ) > 0
+            );
     }
 
-    contadorProductosCategoria.textContent =
-        `${productosFiltrados.length} productos encontrados`;
+    if (
+        stockSeleccionado ===
+        "SinStock"
+    ) {
+        productosFiltrados =
+            productosFiltrados.filter(
+                producto =>
+                    Number(
+                        producto.stock
+                    ) === 0
+            );
+    }
 
-    productosPorCategoria.innerHTML = "";
+    if (
+        contadorProductosCategoria
+    ) {
+        contadorProductosCategoria.textContent =
+            `${productosFiltrados.length} productos encontrados`;
+    }
 
-    if (productosFiltrados.length === 0) {
+    productosPorCategoria.innerHTML =
+        "";
+
+    if (
+        productosFiltrados.length === 0
+    ) {
         productosPorCategoria.innerHTML = `
             <div class="producto-vacio">
                 No hay productos con ese filtro
             </div>
         `;
+
         return;
     }
 
-    productosFiltrados.forEach((producto) => {
-        productosPorCategoria.innerHTML += crearCardProducto(producto);
-    });
+    productosFiltrados.forEach(
+        producto => {
+            productosPorCategoria.innerHTML +=
+                crearCardProducto(
+                    producto
+                );
+        }
+    );
 }
 
-btnActualizarCategorias.addEventListener("click", async () => {
-    await cargarCategorias();
-});
-
-filtroCategoria.addEventListener("change", () => {
-    filtrarProductosCategoria();
-});
-
-filtroStock.addEventListener("change", () => {
-    filtrarProductosCategoria();
-});
-
 async function cargarProveedores() {
+    if (!tablaProveedores) {
+        return;
+    }
+
     try {
         tablaProveedores.innerHTML = `
             <tr>
-                <td colspan="6">Cargando proveedores...</td>
+                <td colspan="6">
+                    Cargando proveedores...
+                </td>
             </tr>
         `;
 
-        const res = await fetch("/proveedores");
-        const proveedores = await res.json();
+        const respuesta =
+            await apiFetch(
+                "/proveedores"
+            );
 
-        tablaProveedores.innerHTML = "";
+        const proveedores =
+            await obtenerJsonSeguro(
+                respuesta
+            );
 
-        if (proveedores.length === 0) {
+        if (!respuesta.ok) {
+            throw new Error(
+                proveedores.mensaje ||
+                "No se pudieron cargar los proveedores."
+            );
+        }
+
+        tablaProveedores.innerHTML =
+            "";
+
+        if (
+            !Array.isArray(proveedores) ||
+            proveedores.length === 0
+        ) {
             tablaProveedores.innerHTML = `
                 <tr>
-                    <td colspan="6">No hay proveedores registrados</td>
+                    <td colspan="6">
+                        No hay proveedores registrados
+                    </td>
                 </tr>
             `;
 
-            totalProveedores.textContent = "0";
-            totalEntregas2026.textContent = "0";
-            totalProximasEntregas.textContent = "0";
+            if (totalProveedores) {
+                totalProveedores.textContent =
+                    "0";
+            }
+
+            if (totalEntregas2026) {
+                totalEntregas2026.textContent =
+                    "0";
+            }
+
+            if (
+                totalProximasEntregas
+            ) {
+                totalProximasEntregas.textContent =
+                    "0";
+            }
 
             return;
         }
 
-        totalProveedores.textContent = proveedores.length;
+        if (totalProveedores) {
+            totalProveedores.textContent =
+                String(
+                    proveedores.length
+                );
+        }
 
-        const entregasTotales = proveedores.reduce((total, proveedor) => {
-            return total + Number(proveedor.entregas_2026);
-        }, 0);
+        const entregasTotales =
+            proveedores.reduce(
+                (
+                    total,
+                    proveedor
+                ) => {
+                    return (
+                        total +
+                        Number(
+                            proveedor.entregas_2026 ||
+                            0
+                        )
+                    );
+                },
+                0
+            );
 
-        totalEntregas2026.textContent = entregasTotales;
+        if (
+            totalEntregas2026
+        ) {
+            totalEntregas2026.textContent =
+                String(
+                    entregasTotales
+                );
+        }
 
-        const proximas = proveedores.filter((proveedor) => {
-            return proveedor.proxima_entrega !== null;
-        }).length;
+        const proximas =
+            proveedores.filter(
+                proveedor =>
+                    Boolean(
+                        proveedor.proxima_entrega
+                    )
+            ).length;
 
-        totalProximasEntregas.textContent = proximas;
+        if (
+            totalProximasEntregas
+        ) {
+            totalProximasEntregas.textContent =
+                String(proximas);
+        }
 
-        proveedores.forEach((proveedor) => {
-            const estadoClase =
-                proveedor.estado === "Activo"
-                    ? "proveedor-activo"
-                    : proveedor.estado === "Pendiente"
-                        ? "proveedor-pendiente"
-                        : "proveedor-inactivo";
+        proveedores.forEach(
+            proveedor => {
+                const estado =
+                    String(
+                        proveedor.estado ||
+                        ""
+                    );
 
-            const fechaEntrega = proveedor.proxima_entrega
-                ? new Date(proveedor.proxima_entrega).toLocaleDateString()
-                : "Sin fecha";
+                const estadoNormalizado =
+                    estado.toLowerCase();
 
-            tablaProveedores.innerHTML += `
-                <tr>
-                    <td>${proveedor.nombre}</td>
-                    <td>${proveedor.categoria}</td>
-                    <td>
-                        ${proveedor.contacto || "Sin contacto"}<br>
-                        <small>${proveedor.telefono || ""}</small><br>
-                        <small>${proveedor.correo || ""}</small>
-                    </td>
-                    <td>${proveedor.entregas_2026}</td>
-                    <td>${fechaEntrega}</td>
-                    <td>
-                        <span class="${estadoClase}">
-                            ${proveedor.estado}
-                        </span>
-                    </td>
-                </tr>
-            `;
-        });
+                const estadoClase =
+                    estadoNormalizado ===
+                    "activo"
+                        ? "proveedor-activo"
+                        : estadoNormalizado ===
+                            "pendiente"
+                            ? "proveedor-pendiente"
+                            : "proveedor-inactivo";
+
+                const fechaEntrega =
+                    proveedor.proxima_entrega
+                        ? new Date(
+                            proveedor.proxima_entrega
+                        ).toLocaleDateString()
+                        : "Sin fecha";
+
+                tablaProveedores.innerHTML += `
+                    <tr>
+
+                        <td>
+                            ${escaparHtml(proveedor.nombre)}
+                        </td>
+
+                        <td>
+                            ${escaparHtml(proveedor.categoria)}
+                        </td>
+
+                        <td>
+                            ${escaparHtml(
+                                proveedor.contacto ||
+                                "Sin contacto"
+                            )}
+                            <br>
+
+                            <small>
+                                ${escaparHtml(
+                                    proveedor.telefono ||
+                                    ""
+                                )}
+                            </small>
+
+                            <br>
+
+                            <small>
+                                ${escaparHtml(
+                                    proveedor.correo ||
+                                    ""
+                                )}
+                            </small>
+                        </td>
+
+                        <td>
+                            ${escaparHtml(
+                                proveedor.entregas_2026 ??
+                                0
+                            )}
+                        </td>
+
+                        <td>
+                            ${escaparHtml(fechaEntrega)}
+                        </td>
+
+                        <td>
+                            <span class="${estadoClase}">
+                                ${escaparHtml(estado)}
+                            </span>
+                        </td>
+
+                    </tr>
+                `;
+            }
+        );
 
     } catch (error) {
-        console.log(error);
+        console.error(
+            "Error cargando proveedores:",
+            error
+        );
 
         tablaProveedores.innerHTML = `
             <tr>
-                <td colspan="6">Error al cargar proveedores</td>
+                <td colspan="6">
+                    Error al cargar proveedores
+                </td>
             </tr>
         `;
     }
 }
 
-formCrearProveedor.addEventListener("submit", async (e) => {
-    e.preventDefault();
+async function crearProveedor(evento) {
+    evento.preventDefault();
 
-    const nombre = document.getElementById("nombreProveedor").value;
-    const categoria = document.getElementById("categoriaProveedor").value;
-    const contacto = document.getElementById("contactoProveedor").value;
-    const telefono = document.getElementById("telefonoProveedor").value;
-    const correo = document.getElementById("correoProveedor").value;
-    const entregas_2026 = document.getElementById("entregasProveedor").value;
-    const proxima_entrega = document.getElementById("proximaEntregaProveedor").value;
-    const estado = document.getElementById("estadoProveedor").value;
+    const nombre =
+        document.getElementById(
+            "nombreProveedor"
+        )?.value.trim();
+
+    const categoria =
+        document.getElementById(
+            "categoriaProveedor"
+        )?.value;
+
+    const contacto =
+        document.getElementById(
+            "contactoProveedor"
+        )?.value.trim();
+
+    const telefono =
+        document.getElementById(
+            "telefonoProveedor"
+        )?.value.trim();
+
+    const correo =
+        document.getElementById(
+            "correoProveedor"
+        )?.value.trim();
+
+    const entregas_2026 =
+        document.getElementById(
+            "entregasProveedor"
+        )?.value;
+
+    const proxima_entrega =
+        document.getElementById(
+            "proximaEntregaProveedor"
+        )?.value;
+
+    const estado =
+        document.getElementById(
+            "estadoProveedor"
+        )?.value;
+
+    if (
+        !nombre ||
+        !categoria ||
+        !proxima_entrega
+    ) {
+        alert(
+            "Completa los datos obligatorios del proveedor."
+        );
+
+        return;
+    }
 
     try {
-        const res = await fetch("/proveedores", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                nombre,
-                categoria,
-                contacto,
-                telefono,
-                correo,
-                entregas_2026,
-                proxima_entrega,
-                estado
-            })
-        });
+        const respuesta =
+            await apiFetch(
+                "/proveedores",
+                {
+                    method: "POST",
 
-        const data = await res.json();
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
 
-        alert(data.mensaje);
+                    body:
+                        JSON.stringify({
+                            nombre,
+                            categoria,
+                            contacto,
+                            telefono,
+                            correo,
+                            entregas_2026,
+                            proxima_entrega,
+                            estado
+                        })
+                }
+            );
 
-        if (!res.ok) {
+        const datos =
+            await obtenerJsonSeguro(
+                respuesta
+            );
+
+        alert(
+            datos.mensaje ||
+            (
+                respuesta.ok
+                    ? "Proveedor registrado correctamente."
+                    : "No se pudo registrar el proveedor."
+            )
+        );
+
+        if (!respuesta.ok) {
             return;
         }
 
-        formCrearProveedor.reset();
+        formCrearProveedor?.reset();
 
         await cargarProveedores();
 
     } catch (error) {
-        console.log(error);
-        alert("Error al registrar proveedor");
-    }
-});
+        console.error(
+            "Error registrando proveedor:",
+            error
+        );
 
-btnActualizarProveedores.addEventListener("click", async () => {
-    await cargarProveedores();
-});
+        if (
+            error.message !==
+            "Sesión expirada."
+        ) {
+            alert(
+                "Error al registrar proveedor."
+            );
+        }
+    }
+}
+
+function cerrarSesion() {
+    limpiarSesion();
+
+    window.location.href =
+        "/";
+}
+
+function mostrarDashboard() {
+    ocultarSecciones();
+
+    if (seccionDashboard) {
+        seccionDashboard.style.display =
+            "block";
+    }
+
+    if (tituloPagina) {
+        tituloPagina.textContent =
+            "Dashboard";
+    }
+
+    if (descripcionPagina) {
+        descripcionPagina.textContent =
+            "Bienvenido al panel de administración de Makro";
+    }
+
+    activarMenu(
+        btnDashboard
+    );
+}
+
+function registrarEventos() {
+    btnCerrarSesion?.addEventListener(
+        "click",
+        evento => {
+            evento.preventDefault();
+
+            cerrarSesion();
+        }
+    );
+
+    btnDashboard?.addEventListener(
+        "click",
+        evento => {
+            evento.preventDefault();
+
+            mostrarDashboard();
+        }
+    );
+
+    btnUsuarios?.addEventListener(
+        "click",
+        async evento => {
+            evento.preventDefault();
+
+            ocultarSecciones();
+
+            if (seccionUsuarios) {
+                seccionUsuarios.style.display =
+                    "block";
+            }
+
+            if (tituloPagina) {
+                tituloPagina.textContent =
+                    "Usuarios";
+            }
+
+            if (descripcionPagina) {
+                descripcionPagina.textContent =
+                    "Administración de usuarios del sistema";
+            }
+
+            activarMenu(
+                btnUsuarios
+            );
+
+            await cargarUsuarios();
+        }
+    );
+
+    btnProductos?.addEventListener(
+        "click",
+        async evento => {
+            evento.preventDefault();
+
+            ocultarSecciones();
+
+            if (seccionProductos) {
+                seccionProductos.style.display =
+                    "block";
+            }
+
+            if (tituloPagina) {
+                tituloPagina.textContent =
+                    "Productos";
+            }
+
+            if (descripcionPagina) {
+                descripcionPagina.textContent =
+                    "Gestión y registro de productos Makro";
+            }
+
+            activarMenu(
+                btnProductos
+            );
+
+            await cargarProductos();
+        }
+    );
+
+    btnCategorias?.addEventListener(
+        "click",
+        async evento => {
+            evento.preventDefault();
+
+            ocultarSecciones();
+
+            if (seccionCategorias) {
+                seccionCategorias.style.display =
+                    "block";
+            }
+
+            if (tituloPagina) {
+                tituloPagina.textContent =
+                    "Categorías";
+            }
+
+            if (descripcionPagina) {
+                descripcionPagina.textContent =
+                    "Filtrado de productos por categoría y alertas de stock bajo";
+            }
+
+            activarMenu(
+                btnCategorias
+            );
+
+            await cargarCategorias();
+        }
+    );
+
+    btnProveedores?.addEventListener(
+        "click",
+        async evento => {
+            evento.preventDefault();
+
+            ocultarSecciones();
+
+            if (seccionProveedores) {
+                seccionProveedores.style.display =
+                    "block";
+            }
+
+            if (tituloPagina) {
+                tituloPagina.textContent =
+                    "Proveedores";
+            }
+
+            if (descripcionPagina) {
+                descripcionPagina.textContent =
+                    "Gestión de empresas proveedoras y próximas entregas";
+            }
+
+            activarMenu(
+                btnProveedores
+            );
+
+            await cargarProveedores();
+        }
+    );
+
+    formCrearUsuario?.addEventListener(
+        "submit",
+        crearUsuario
+    );
+
+    btnActualizarUsuarios?.addEventListener(
+        "click",
+        async () => {
+            await cargarUsuarios();
+        }
+    );
+
+    inputImagenProducto?.addEventListener(
+        "change",
+        previsualizarImagenProducto
+    );
+
+    formCrearProducto?.addEventListener(
+        "submit",
+        crearProducto
+    );
+
+    btnActualizarProductos?.addEventListener(
+        "click",
+        async () => {
+            await cargarProductos();
+        }
+    );
+
+    btnActualizarCategorias?.addEventListener(
+        "click",
+        async () => {
+            await cargarCategorias();
+        }
+    );
+
+    filtroCategoria?.addEventListener(
+        "change",
+        filtrarProductosCategoria
+    );
+
+    filtroStock?.addEventListener(
+        "change",
+        filtrarProductosCategoria
+    );
+
+    formCrearProveedor?.addEventListener(
+        "submit",
+        crearProveedor
+    );
+
+    btnActualizarProveedores?.addEventListener(
+        "click",
+        async () => {
+            await cargarProveedores();
+        }
+    );
+}
+
+async function iniciarPanelAdministrador() {
+    const autorizado =
+        await verificarAdministrador();
+
+    if (!autorizado) {
+        return;
+    }
+
+    registrarEventos();
+
+    mostrarDashboard();
+
+    const usuario =
+        obtenerUsuario();
+
+    if (usuario) {
+        console.log(
+            `Administrador conectado: ${usuario.correo}`
+        );
+    }
+}
+
+document.addEventListener(
+    "DOMContentLoaded",
+    iniciarPanelAdministrador
+);

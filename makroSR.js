@@ -4,6 +4,7 @@ const express = require("express");
 const sql = require("mssql");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const path = require("path");
 const multer = require("multer");
 const fs = require("fs");
@@ -14,18 +15,23 @@ app.disable("x-powered-by");
 
 const PORT = Number(process.env.PORT) || 3003;
 
-app.use(express.json({
-    limit: "2mb"
-}));
+app.use(
+    express.json({
+        limit: "2mb"
+    })
+);
 
-app.use(express.urlencoded({
-    extended: true
-}));
+app.use(
+    express.urlencoded({
+        extended: true
+    })
+);
 
 const origenesPermitidos = (process.env.CORS_ORIGINS || "")
     .split(",")
     .map(origen => origen.trim())
     .filter(Boolean);
+
 
 app.use(
     cors({
@@ -46,7 +52,21 @@ app.use(
             return callback(
                 new Error("Origen no permitido por CORS")
             );
-        }
+        },
+
+        allowedHeaders: [
+            "Content-Type",
+            "Authorization"
+        ],
+
+        methods: [
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "OPTIONS"
+        ]
     })
 );
 
@@ -104,18 +124,21 @@ const variablesObligatorias = [
     "DB_SERVER",
     "DB_DATABASE",
     "DB_USER",
-    "DB_PASSWORD"
+    "DB_PASSWORD",
+    "JWT_SECRET"
 ];
+
 
 const variablesFaltantes =
     variablesObligatorias.filter(
         variable => !process.env[variable]
     );
 
+
 if (variablesFaltantes.length > 0) {
 
     console.error(
-        "❌ Faltan variables en .env:"
+        "❌ Faltan variables obligatorias en .env:"
     );
 
     console.error(
@@ -125,19 +148,30 @@ if (variablesFaltantes.length > 0) {
     process.exit(1);
 }
 
+const JWT_SECRET =
+    process.env.JWT_SECRET;
+
+const JWT_EXPIRES_IN =
+    process.env.JWT_EXPIRES_IN || "8h";
+
 const config = {
 
-    user: process.env.DB_USER,
+    user:
+        process.env.DB_USER,
 
-    password: process.env.DB_PASSWORD,
+    password:
+        process.env.DB_PASSWORD,
 
-    server: process.env.DB_SERVER,
+    server:
+        process.env.DB_SERVER,
 
-    database: process.env.DB_DATABASE,
+    database:
+        process.env.DB_DATABASE,
 
-    port: Number(
-        process.env.DB_PORT || 1433
-    ),
+    port:
+        Number(
+            process.env.DB_PORT || 1433
+        ),
 
     options: {
 
@@ -149,8 +183,11 @@ const config = {
     },
 
     pool: {
+
         max: 10,
+
         min: 0,
+
         idleTimeoutMillis: 30000
     },
 
@@ -159,17 +196,23 @@ const config = {
     connectionTimeout: 30000
 };
 
-const pool = new sql.ConnectionPool(config);
+const pool =
+    new sql.ConnectionPool(config);
 
-const poolConnect = pool.connect();
+const poolConnect =
+    pool.connect();
 
-pool.on("error", error => {
 
-    console.error(
-        "❌ ERROR DEL POOL SQL:",
-        error
-    );
-});
+pool.on(
+    "error",
+    error => {
+
+        console.error(
+            "❌ ERROR DEL POOL SQL:",
+            error
+        );
+    }
+);
 
 function limpiarTexto(valor) {
 
@@ -196,6 +239,7 @@ function obtenerMensajeError(error) {
         process.env.NODE_ENV ===
         "production"
     ) {
+
         return undefined;
     }
 
@@ -214,13 +258,144 @@ function responderErrorServidor(
         error
     );
 
-    return res.status(500).json({
+    return res
+        .status(500)
+        .json({
 
-        mensaje,
+            mensaje,
 
-        error:
-            obtenerMensajeError(error)
-    });
+            error:
+                obtenerMensajeError(error)
+        });
+}
+
+function generarToken(usuario) {
+
+    return jwt.sign(
+        {
+            id: usuario.id,
+
+            correo:
+                usuario.correo,
+
+            rol:
+                Number(usuario.rol)
+        },
+
+        JWT_SECRET,
+
+        {
+            expiresIn:
+                JWT_EXPIRES_IN
+        }
+    );
+}
+
+function autenticarToken(
+    req,
+    res,
+    next
+) {
+
+    const authorization =
+        req.headers.authorization;
+
+
+    if (
+        !authorization ||
+        !authorization.startsWith("Bearer ")
+    ) {
+
+        return res
+            .status(401)
+            .json({
+
+                mensaje:
+                    "Debes iniciar sesión."
+            });
+    }
+
+
+    const token =
+        authorization.substring(7);
+
+
+    if (!token) {
+
+        return res
+            .status(401)
+            .json({
+
+                mensaje:
+                    "Token no proporcionado."
+            });
+    }
+
+
+    try {
+
+        const usuario =
+            jwt.verify(
+                token,
+                JWT_SECRET
+            );
+
+
+        req.usuario =
+            usuario;
+
+
+        next();
+
+    } catch (error) {
+
+        if (
+            error.name ===
+            "TokenExpiredError"
+        ) {
+
+            return res
+                .status(401)
+                .json({
+
+                    mensaje:
+                        "La sesión ha expirado."
+                });
+        }
+
+
+        return res
+            .status(401)
+            .json({
+
+                mensaje:
+                    "Token inválido."
+            });
+    }
+}
+
+function soloAdministrador(
+    req,
+    res,
+    next
+) {
+
+    if (
+        !req.usuario ||
+        Number(req.usuario.rol) !== 1
+    ) {
+
+        return res
+            .status(403)
+            .json({
+
+                mensaje:
+                    "No tienes permisos de administrador."
+            });
+    }
+
+
+    next();
 }
 
 const carpetaProductos =
@@ -231,7 +406,11 @@ const carpetaProductos =
     );
 
 
-if (!fs.existsSync(carpetaProductos)) {
+if (
+    !fs.existsSync(
+        carpetaProductos
+    )
+) {
 
     fs.mkdirSync(
         carpetaProductos,
@@ -269,10 +448,12 @@ const storage =
                     )
                     .toLowerCase();
 
+
             const nombreArchivo =
                 `${Date.now()}-${Math.round(
                     Math.random() * 1e9
                 )}${extension}`;
+
 
             cb(
                 null,
@@ -289,271 +470,392 @@ const tiposImagenPermitidos = [
 ];
 
 
-const upload = multer({
+const upload =
+    multer({
 
-    storage,
+        storage,
 
-    limits: {
-        fileSize:
-            5 * 1024 * 1024
-    },
+        limits: {
 
-    fileFilter: (
-        req,
-        file,
-        cb
-    ) => {
+            fileSize:
+                5 * 1024 * 1024
+        },
 
-        if (
-            tiposImagenPermitidos.includes(
-                file.mimetype
-            )
-        ) {
+        fileFilter: (
+            req,
+            file,
+            cb
+        ) => {
+
+            if (
+                tiposImagenPermitidos.includes(
+                    file.mimetype
+                )
+            ) {
+
+                return cb(
+                    null,
+                    true
+                );
+            }
+
 
             return cb(
-                null,
-                true
+                new Error(
+                    "Solo se permiten imágenes JPG, PNG o WEBP."
+                )
             );
         }
+    });
 
-        return cb(
-            new Error(
-                "Solo se permiten imágenes JPG, PNG o WEBP."
-            )
-        );
-    }
-});
+app.get(
+    "/health",
+    async (req, res) => {
 
-app.get("/health", async (req, res) => {
+        try {
 
-    try {
-
-        await poolConnect;
-
-        await pool
-            .request()
-            .query("SELECT 1 AS ok");
-
-        res.json({
-
-            estado: "OK",
-
-            servidor:
-                "MakroServer",
-
-            baseDatos:
-                "Conectada"
-        });
-
-    } catch (error) {
-
-        console.error(error);
-
-        res.status(503).json({
-
-            estado:
-                "ERROR",
-
-            baseDatos:
-                "No disponible"
-        });
-    }
-});
-
-app.get("/", (req, res) => {
-
-    res.sendFile(
-        path.join(
-            __dirname,
-            "HTML",
-            "LoginMO.html"
-        )
-    );
-});
-
-app.post("/login", async (req, res) => {
-
-    let {
-        correo,
-        contrasena
-    } = req.body;
+            await poolConnect;
 
 
-    correo =
-        limpiarTexto(correo)
-            .toLowerCase();
-
-
-    if (
-        !correo ||
-        !contrasena
-    ) {
-
-        return res.status(400).json({
-
-            mensaje:
-                "Correo y contraseña son obligatorios."
-        });
-    }
-
-
-    if (!correoValido(correo)) {
-
-        return res.status(400).json({
-
-            mensaje:
-                "El correo electrónico no es válido."
-        });
-    }
-
-
-    try {
-
-        await poolConnect;
-
-
-        const result =
             await pool
                 .request()
-                .input(
-                    "correo",
-                    sql.VarChar(100),
-                    correo
-                )
                 .query(`
-                    SELECT
-                        id,
-                        correo,
-                        contrasena,
-                        rol,
-                        fecha_creacion
-                    FROM cuentasMakro
-                    WHERE correo = @correo
+                    SELECT 1 AS ok
                 `);
 
 
+            return res.json({
+
+                estado:
+                    "OK",
+
+                servidor:
+                    "MakroServer",
+
+                baseDatos:
+                    "Conectada"
+            });
+
+        } catch (error) {
+
+            console.error(error);
+
+
+            return res
+                .status(503)
+                .json({
+
+                    estado:
+                        "ERROR",
+
+                    baseDatos:
+                        "No disponible"
+                });
+        }
+    }
+);
+
+app.get(
+    "/",
+    (req, res) => {
+
+        res.sendFile(
+            path.join(
+                __dirname,
+                "HTML",
+                "LoginMO.html"
+            )
+        );
+    }
+);
+
+app.post(
+    "/login",
+    async (req, res) => {
+
+        let {
+            correo,
+            contrasena
+        } = req.body;
+
+
+        correo =
+            limpiarTexto(correo)
+                .toLowerCase();
+
+
         if (
-            result.recordset.length === 0
+            !correo ||
+            !contrasena
         ) {
 
-            return res.status(401).json({
+            return res
+                .status(400)
+                .json({
 
-                mensaje:
-                    "Correo o contraseña incorrectos."
-            });
+                    mensaje:
+                        "Correo y contraseña son obligatorios."
+                });
         }
 
 
-        const usuario =
-            result.recordset[0];
+        if (
+            !correoValido(correo)
+        ) {
+
+            return res
+                .status(400)
+                .json({
+
+                    mensaje:
+                        "Correo electrónico no válido."
+                });
+        }
 
 
-        const contrasenaCorrecta =
-            await bcrypt.compare(
-                contrasena,
-                usuario.contrasena
+        try {
+
+            await poolConnect;
+
+
+            const result =
+                await pool
+                    .request()
+                    .input(
+                        "correo",
+                        sql.VarChar(100),
+                        correo
+                    )
+                    .query(`
+                        SELECT
+                            id,
+                            correo,
+                            contrasena,
+                            rol,
+                            fecha_creacion
+                        FROM cuentasMakro
+                        WHERE correo = @correo
+                    `);
+
+
+            if (
+                result.recordset.length === 0
+            ) {
+
+                return res
+                    .status(401)
+                    .json({
+
+                        mensaje:
+                            "Correo o contraseña incorrectos."
+                    });
+            }
+
+
+            const usuario =
+                result.recordset[0];
+
+
+            const contrasenaCorrecta =
+                await bcrypt.compare(
+                    contrasena,
+                    usuario.contrasena
+                );
+
+
+            if (
+                !contrasenaCorrecta
+            ) {
+
+                return res
+                    .status(401)
+                    .json({
+
+                        mensaje:
+                            "Correo o contraseña incorrectos."
+                    });
+            }
+
+
+            const token =
+                generarToken(usuario);
+
+
+            const rol =
+                Number(usuario.rol);
+
+
+            return res.json({
+
+                mensaje:
+                    "Login correcto.",
+
+                token,
+
+                usuario: {
+
+                    id:
+                        usuario.id,
+
+                    correo:
+                        usuario.correo,
+
+                    rol
+                },
+
+                rol,
+
+                redireccion:
+                    rol === 1
+                        ? "/admin"
+                        : "/trabajador"
+            });
+
+        } catch (error) {
+
+            return responderErrorServidor(
+                res,
+                "Error al iniciar sesión",
+                error
             );
-
-
-        if (!contrasenaCorrecta) {
-
-            return res.status(401).json({
-
-                mensaje:
-                    "Correo o contraseña incorrectos."
-            });
         }
+    }
+);
 
-
-        const rol =
-            Number(usuario.rol);
-
+app.get(
+    "/auth/verificar",
+    autenticarToken,
+    (req, res) => {
 
         return res.json({
 
-            mensaje:
-                "Login correcto",
+            autenticado:
+                true,
 
-            usuario: {
-                id:
-                    usuario.id,
-
-                correo:
-                    usuario.correo,
-
-                rol
-            },
-
-            rol,
-
-            redireccion:
-                rol === 1
-                    ? "/admin"
-                    : "/trabajador"
-        });
-
-    } catch (error) {
-
-        return responderErrorServidor(
-            res,
-            "Error al iniciar sesión",
-            error
-        );
-    }
-});
-
-app.post("/registro", async (req, res) => {
-
-    let {
-        correo,
-        contrasena
-    } = req.body;
-
-
-    correo =
-        limpiarTexto(correo)
-            .toLowerCase();
-
-
-    if (
-        !correo ||
-        !contrasena
-    ) {
-
-        return res.status(400).json({
-
-            mensaje:
-                "Correo y contraseña son obligatorios."
+            usuario:
+                req.usuario
         });
     }
+);
 
+app.get(
+    "/auth/admin",
+    autenticarToken,
+    soloAdministrador,
+    (req, res) => {
 
-    if (!correoValido(correo)) {
+        return res.json({
 
-        return res.status(400).json({
+            autorizado:
+                true,
 
-            mensaje:
-                "Correo electrónico no válido."
+            usuario:
+                req.usuario
         });
     }
+);
+
+app.post(
+    "/registro",
+    async (req, res) => {
+
+        let {
+            correo,
+            contrasena
+        } = req.body;
 
 
-    if (contrasena.length < 6) {
-
-        return res.status(400).json({
-
-            mensaje:
-                "La contraseña debe tener como mínimo 6 caracteres."
-        });
-    }
+        correo =
+            limpiarTexto(correo)
+                .toLowerCase();
 
 
-    try {
+        if (
+            !correo ||
+            !contrasena
+        ) {
 
-        await poolConnect;
+            return res
+                .status(400)
+                .json({
+
+                    mensaje:
+                        "Correo y contraseña son obligatorios."
+                });
+        }
 
 
-        const existe =
+        if (
+            !correoValido(correo)
+        ) {
+
+            return res
+                .status(400)
+                .json({
+
+                    mensaje:
+                        "Correo electrónico no válido."
+                });
+        }
+
+
+        if (
+            contrasena.length < 6
+        ) {
+
+            return res
+                .status(400)
+                .json({
+
+                    mensaje:
+                        "La contraseña debe tener como mínimo 6 caracteres."
+                });
+        }
+
+
+        try {
+
+            await poolConnect;
+
+
+            const existe =
+                await pool
+                    .request()
+                    .input(
+                        "correo",
+                        sql.VarChar(100),
+                        correo
+                    )
+                    .query(`
+                        SELECT id
+                        FROM cuentasMakro
+                        WHERE correo = @correo
+                    `);
+
+
+            if (
+                existe.recordset.length > 0
+            ) {
+
+                return res
+                    .status(409)
+                    .json({
+
+                        mensaje:
+                            "Ese correo ya está registrado."
+                    });
+            }
+
+
+            const contrasenaEncriptada =
+                await bcrypt.hash(
+                    contrasena,
+                    10
+                );
+
+            const rol = 0;
+
+
             await pool
                 .request()
                 .input(
@@ -561,202 +863,227 @@ app.post("/registro", async (req, res) => {
                     sql.VarChar(100),
                     correo
                 )
-                .query(`
-                    SELECT id
-                    FROM cuentasMakro
-                    WHERE correo = @correo
-                `);
-
-
-        if (
-            existe.recordset.length > 0
-        ) {
-
-            return res.status(409).json({
-
-                mensaje:
-                    "Ese correo ya está registrado."
-            });
-        }
-
-
-        const contrasenaEncriptada =
-            await bcrypt.hash(
-                contrasena,
-                10
-            );
-
-        const rol = 0;
-
-
-        await pool
-            .request()
-            .input(
-                "correo",
-                sql.VarChar(100),
-                correo
-            )
-            .input(
-                "contrasena",
-                sql.VarChar(100),
-                contrasenaEncriptada
-            )
-            .input(
-                "rol",
-                sql.Int,
-                rol
-            )
-            .query(`
-                INSERT INTO cuentasMakro
-                (
-                    correo,
-                    contrasena,
+                .input(
+                    "contrasena",
+                    sql.VarChar(100),
+                    contrasenaEncriptada
+                )
+                .input(
+                    "rol",
+                    sql.Int,
                     rol
                 )
-                VALUES
-                (
-                    @correo,
-                    @contrasena,
-                    @rol
-                )
-            `);
-
-
-        return res.status(201).json({
-
-            mensaje:
-                "Cuenta creada correctamente."
-        });
-
-    } catch (error) {
-
-        if (
-            error.number === 2627 ||
-            error.number === 2601
-        ) {
-
-            return res.status(409).json({
-
-                mensaje:
-                    "Ese correo ya existe."
-            });
-        }
-
-
-        return responderErrorServidor(
-            res,
-            "Error al registrar la cuenta",
-            error
-        );
-    }
-});
-
-app.get("/usuarios", async (req, res) => {
-
-    try {
-
-        await poolConnect;
-
-
-        const result =
-            await pool
-                .request()
                 .query(`
-                    SELECT
-                        id,
+                    INSERT INTO cuentasMakro
+                    (
                         correo,
-                        rol,
-                        fecha_creacion
-                    FROM cuentasMakro
-                    ORDER BY id DESC
+                        contrasena,
+                        rol
+                    )
+                    VALUES
+                    (
+                        @correo,
+                        @contrasena,
+                        @rol
+                    )
                 `);
 
 
-        return res.json(
-            result.recordset
-        );
+            return res
+                .status(201)
+                .json({
 
-    } catch (error) {
+                    mensaje:
+                        "Cuenta creada correctamente."
+                });
 
-        return responderErrorServidor(
-            res,
-            "Error al obtener usuarios",
-            error
-        );
+        } catch (error) {
+
+            if (
+                error.number === 2627 ||
+                error.number === 2601
+            ) {
+
+                return res
+                    .status(409)
+                    .json({
+
+                        mensaje:
+                            "Ese correo ya existe."
+                    });
+            }
+
+
+            return responderErrorServidor(
+                res,
+                "Error al registrar la cuenta",
+                error
+            );
+        }
     }
-});
+);
+
+app.get(
+    "/usuarios",
+    autenticarToken,
+    soloAdministrador,
+    async (req, res) => {
+
+        try {
+
+            await poolConnect;
 
 
-app.post("/usuarios", async (req, res) => {
-
-    let {
-        correo,
-        contrasena,
-        rol
-    } = req.body;
-
-
-    correo =
-        limpiarTexto(correo)
-            .toLowerCase();
-
-
-    rol =
-        Number(rol);
+            const result =
+                await pool
+                    .request()
+                    .query(`
+                        SELECT
+                            id,
+                            correo,
+                            rol,
+                            fecha_creacion
+                        FROM cuentasMakro
+                        ORDER BY id DESC
+                    `);
 
 
-    if (
-        !correo ||
-        !contrasena
-    ) {
+            return res.json(
+                result.recordset
+            );
 
-        return res.status(400).json({
+        } catch (error) {
 
-            mensaje:
-                "Correo y contraseña son obligatorios."
-        });
+            return responderErrorServidor(
+                res,
+                "Error al obtener usuarios",
+                error
+            );
+        }
     }
+);
+
+app.post(
+    "/usuarios",
+    autenticarToken,
+    soloAdministrador,
+    async (req, res) => {
+
+        let {
+            correo,
+            contrasena,
+            rol
+        } = req.body;
 
 
-    if (!correoValido(correo)) {
-
-        return res.status(400).json({
-
-            mensaje:
-                "Correo electrónico no válido."
-        });
-    }
+        correo =
+            limpiarTexto(correo)
+                .toLowerCase();
 
 
-    if (contrasena.length < 6) {
-
-        return res.status(400).json({
-
-            mensaje:
-                "La contraseña debe tener al menos 6 caracteres."
-        });
-    }
+        rol =
+            Number(rol);
 
 
-    if (
-        rol !== 0 &&
-        rol !== 1
-    ) {
+        if (
+            !correo ||
+            !contrasena
+        ) {
 
-        return res.status(400).json({
+            return res
+                .status(400)
+                .json({
 
-            mensaje:
-                "El rol debe ser 0 o 1."
-        });
-    }
-
-
-    try {
-
-        await poolConnect;
+                    mensaje:
+                        "Correo y contraseña son obligatorios."
+                });
+        }
 
 
-        const existe =
+        if (
+            !correoValido(correo)
+        ) {
+
+            return res
+                .status(400)
+                .json({
+
+                    mensaje:
+                        "Correo electrónico no válido."
+                });
+        }
+
+
+        if (
+            contrasena.length < 6
+        ) {
+
+            return res
+                .status(400)
+                .json({
+
+                    mensaje:
+                        "La contraseña debe tener mínimo 6 caracteres."
+                });
+        }
+
+
+        if (
+            rol !== 0 &&
+            rol !== 1
+        ) {
+
+            return res
+                .status(400)
+                .json({
+
+                    mensaje:
+                        "El rol debe ser 0 o 1."
+                });
+        }
+
+
+        try {
+
+            await poolConnect;
+
+
+            const existe =
+                await pool
+                    .request()
+                    .input(
+                        "correo",
+                        sql.VarChar(100),
+                        correo
+                    )
+                    .query(`
+                        SELECT id
+                        FROM cuentasMakro
+                        WHERE correo = @correo
+                    `);
+
+
+            if (
+                existe.recordset.length > 0
+            ) {
+
+                return res
+                    .status(409)
+                    .json({
+
+                        mensaje:
+                            "Ese correo ya existe."
+                    });
+            }
+
+
+            const contrasenaEncriptada =
+                await bcrypt.hash(
+                    contrasena,
+                    10
+                );
+
+
             await pool
                 .request()
                 .input(
@@ -764,136 +1091,98 @@ app.post("/usuarios", async (req, res) => {
                     sql.VarChar(100),
                     correo
                 )
-                .query(`
-                    SELECT id
-                    FROM cuentasMakro
-                    WHERE correo = @correo
-                `);
-
-
-        if (
-            existe.recordset.length > 0
-        ) {
-
-            return res.status(409).json({
-
-                mensaje:
-                    "Ese correo ya existe."
-            });
-        }
-
-
-        const contrasenaEncriptada =
-            await bcrypt.hash(
-                contrasena,
-                10
-            );
-
-
-        await pool
-            .request()
-            .input(
-                "correo",
-                sql.VarChar(100),
-                correo
-            )
-            .input(
-                "contrasena",
-                sql.VarChar(100),
-                contrasenaEncriptada
-            )
-            .input(
-                "rol",
-                sql.Int,
-                rol
-            )
-            .query(`
-                INSERT INTO cuentasMakro
-                (
-                    correo,
-                    contrasena,
+                .input(
+                    "contrasena",
+                    sql.VarChar(100),
+                    contrasenaEncriptada
+                )
+                .input(
+                    "rol",
+                    sql.Int,
                     rol
                 )
-                VALUES
-                (
-                    @correo,
-                    @contrasena,
-                    @rol
-                )
-            `);
-
-
-        return res.status(201).json({
-
-            mensaje:
-                "Usuario creado correctamente."
-        });
-
-    } catch (error) {
-
-        if (
-            error.number === 2627 ||
-            error.number === 2601
-        ) {
-
-            return res.status(409).json({
-
-                mensaje:
-                    "Ese correo ya existe."
-            });
-        }
-
-
-        return responderErrorServidor(
-            res,
-            "Error al crear usuario",
-            error
-        );
-    }
-});
-
-app.get("/productos", async (req, res) => {
-
-    try {
-
-        await poolConnect;
-
-
-        const result =
-            await pool
-                .request()
                 .query(`
-                    SELECT
-                        id,
-                        nombre,
-                        categoria,
-                        precio,
-                        stock,
-                        imagen,
-                        estado,
-                        fecha_creacion
-                    FROM productosMakro
-                    ORDER BY id DESC
+                    INSERT INTO cuentasMakro
+                    (
+                        correo,
+                        contrasena,
+                        rol
+                    )
+                    VALUES
+                    (
+                        @correo,
+                        @contrasena,
+                        @rol
+                    )
                 `);
 
 
-        return res.json(
-            result.recordset
-        );
+            return res
+                .status(201)
+                .json({
 
-    } catch (error) {
+                    mensaje:
+                        "Usuario creado correctamente."
+                });
 
-        return responderErrorServidor(
-            res,
-            "Error al obtener productos",
-            error
-        );
+        } catch (error) {
+
+            return responderErrorServidor(
+                res,
+                "Error al crear usuario",
+                error
+            );
+        }
     }
-});
+);
 
+app.get(
+    "/productos",
+    autenticarToken,
+    async (req, res) => {
+
+        try {
+
+            await poolConnect;
+
+
+            const result =
+                await pool
+                    .request()
+                    .query(`
+                        SELECT
+                            id,
+                            nombre,
+                            categoria,
+                            precio,
+                            stock,
+                            imagen,
+                            estado,
+                            fecha_creacion
+                        FROM productosMakro
+                        ORDER BY id DESC
+                    `);
+
+
+            return res.json(
+                result.recordset
+            );
+
+        } catch (error) {
+
+            return responderErrorServidor(
+                res,
+                "Error al obtener productos",
+                error
+            );
+        }
+    }
+);
 
 app.post(
     "/productos",
+    autenticarToken,
+    soloAdministrador,
     upload.single("imagen"),
     async (req, res) => {
 
@@ -928,11 +1217,13 @@ app.post(
             !categoria
         ) {
 
-            return res.status(400).json({
+            return res
+                .status(400)
+                .json({
 
-                mensaje:
-                    "Nombre y categoría son obligatorios."
-            });
+                    mensaje:
+                        "Nombre y categoría son obligatorios."
+                });
         }
 
 
@@ -941,11 +1232,13 @@ app.post(
             precio < 0
         ) {
 
-            return res.status(400).json({
+            return res
+                .status(400)
+                .json({
 
-                mensaje:
-                    "El precio no es válido."
-            });
+                    mensaje:
+                        "Precio inválido."
+                });
         }
 
 
@@ -954,11 +1247,13 @@ app.post(
             stock < 0
         ) {
 
-            return res.status(400).json({
+            return res
+                .status(400)
+                .json({
 
-                mensaje:
-                    "El stock no es válido."
-            });
+                    mensaje:
+                        "Stock inválido."
+                });
         }
 
 
@@ -1036,11 +1331,13 @@ app.post(
                 `);
 
 
-            return res.status(201).json({
+            return res
+                .status(201)
+                .json({
 
-                mensaje:
-                    "Producto creado correctamente."
-            });
+                    mensaje:
+                        "Producto creado correctamente."
+                });
 
         } catch (error) {
 
@@ -1060,7 +1357,7 @@ app.post(
                 ) {
 
                     console.error(
-                        "No se pudo eliminar imagen:",
+                        "No se pudo eliminar la imagen:",
                         errorEliminar
                     );
                 }
@@ -1076,19 +1373,185 @@ app.post(
     }
 );
 
-app.get("/proveedores", async (req, res) => {
+app.get(
+    "/proveedores",
+    autenticarToken,
+    async (req, res) => {
 
-    try {
+        try {
 
-        await poolConnect;
+            await poolConnect;
 
 
-        const result =
+            const result =
+                await pool
+                    .request()
+                    .query(`
+                        SELECT
+                            id,
+                            nombre,
+                            categoria,
+                            contacto,
+                            telefono,
+                            correo,
+                            entregas_2026,
+                            proxima_entrega,
+                            estado,
+                            fecha_creacion
+                        FROM proveedoresMakro
+                        ORDER BY id DESC
+                    `);
+
+
+            return res.json(
+                result.recordset
+            );
+
+        } catch (error) {
+
+            return responderErrorServidor(
+                res,
+                "Error al obtener proveedores",
+                error
+            );
+        }
+    }
+);
+
+app.post(
+    "/proveedores",
+    autenticarToken,
+    soloAdministrador,
+    async (req, res) => {
+
+        let {
+            nombre,
+            categoria,
+            contacto,
+            telefono,
+            correo,
+            entregas_2026,
+            proxima_entrega,
+            estado
+        } = req.body;
+
+
+        nombre =
+            limpiarTexto(nombre);
+
+        categoria =
+            limpiarTexto(categoria);
+
+        contacto =
+            limpiarTexto(contacto);
+
+        telefono =
+            limpiarTexto(telefono);
+
+        correo =
+            limpiarTexto(correo);
+
+        estado =
+            limpiarTexto(estado);
+
+
+        entregas_2026 =
+            Number(entregas_2026);
+
+
+        if (
+            !nombre ||
+            !categoria
+        ) {
+
+            return res
+                .status(400)
+                .json({
+
+                    mensaje:
+                        "Nombre y categoría son obligatorios."
+                });
+        }
+
+
+        if (
+            !Number.isInteger(entregas_2026) ||
+            entregas_2026 < 0
+        ) {
+
+            entregas_2026 = 0;
+        }
+
+
+        if (!estado) {
+
+            estado =
+                "Activo";
+        }
+
+
+        if (!proxima_entrega) {
+
+            return res
+                .status(400)
+                .json({
+
+                    mensaje:
+                        "La próxima entrega es obligatoria."
+                });
+        }
+
+
+        try {
+
+            await poolConnect;
+
+
             await pool
                 .request()
+                .input(
+                    "nombre",
+                    sql.NVarChar(150),
+                    nombre
+                )
+                .input(
+                    "categoria",
+                    sql.NVarChar(100),
+                    categoria
+                )
+                .input(
+                    "contacto",
+                    sql.NVarChar(150),
+                    contacto || null
+                )
+                .input(
+                    "telefono",
+                    sql.NVarChar(30),
+                    telefono || null
+                )
+                .input(
+                    "correo",
+                    sql.NVarChar(150),
+                    correo || null
+                )
+                .input(
+                    "entregas",
+                    sql.Int,
+                    entregas_2026
+                )
+                .input(
+                    "proximaEntrega",
+                    sql.Date,
+                    proxima_entrega
+                )
+                .input(
+                    "estado",
+                    sql.NVarChar(30),
+                    estado
+                )
                 .query(`
-                    SELECT
-                        id,
+                    INSERT INTO proveedoresMakro
+                    (
                         nombre,
                         categoria,
                         contacto,
@@ -1096,520 +1559,414 @@ app.get("/proveedores", async (req, res) => {
                         correo,
                         entregas_2026,
                         proxima_entrega,
-                        estado,
-                        fecha_creacion
-                    FROM proveedoresMakro
-                    ORDER BY id DESC
+                        estado
+                    )
+                    VALUES
+                    (
+                        @nombre,
+                        @categoria,
+                        @contacto,
+                        @telefono,
+                        @correo,
+                        @entregas,
+                        @proximaEntrega,
+                        @estado
+                    )
                 `);
 
 
-        return res.json(
-            result.recordset
-        );
+            return res
+                .status(201)
+                .json({
 
-    } catch (error) {
+                    mensaje:
+                        "Proveedor registrado correctamente."
+                });
 
-        return responderErrorServidor(
-            res,
-            "Error al obtener proveedores",
-            error
-        );
+        } catch (error) {
+
+            return responderErrorServidor(
+                res,
+                "Error al registrar proveedor",
+                error
+            );
+        }
     }
-});
+);
+
+app.get(
+    "/ventas",
+    autenticarToken,
+    async (req, res) => {
+
+        try {
+
+            await poolConnect;
 
 
-app.post("/proveedores", async (req, res) => {
-
-    let {
-        nombre,
-        categoria,
-        contacto,
-        telefono,
-        correo,
-        entregas_2026,
-        proxima_entrega,
-        estado
-    } = req.body;
-
-
-    nombre =
-        limpiarTexto(nombre);
-
-    categoria =
-        limpiarTexto(categoria);
-
-    contacto =
-        limpiarTexto(contacto);
-
-    telefono =
-        limpiarTexto(telefono);
-
-    correo =
-        limpiarTexto(correo);
-
-    estado =
-        limpiarTexto(estado);
+            const result =
+                await pool
+                    .request()
+                    .query(`
+                        SELECT
+                            id,
+                            producto_id,
+                            producto_nombre,
+                            cantidad,
+                            precio_unitario,
+                            total,
+                            fecha_venta
+                        FROM ventasMakro
+                        ORDER BY id DESC
+                    `);
 
 
-    entregas_2026 =
-        Number(entregas_2026);
+            return res.json(
+                result.recordset
+            );
 
+        } catch (error) {
 
-    if (
-        !nombre ||
-        !categoria
-    ) {
-
-        return res.status(400).json({
-
-            mensaje:
-                "Nombre y categoría son obligatorios."
-        });
+            return responderErrorServidor(
+                res,
+                "Error al obtener ventas",
+                error
+            );
+        }
     }
+);
+
+app.post(
+    "/ventas",
+    autenticarToken,
+    async (req, res) => {
+
+        const productoId =
+            Number(
+                req.body.producto_id
+            );
 
 
-    if (
-        !Number.isInteger(entregas_2026) ||
-        entregas_2026 < 0
-    ) {
-
-        entregas_2026 = 0;
-    }
+        const cantidad =
+            Number(
+                req.body.cantidad
+            );
 
 
-    if (!estado) {
-        estado = "Activo";
-    }
+        if (
+            !Number.isInteger(productoId) ||
+            productoId <= 0
+        ) {
+
+            return res
+                .status(400)
+                .json({
+
+                    mensaje:
+                        "Producto inválido."
+                });
+        }
 
 
-    if (!proxima_entrega) {
+        if (
+            !Number.isInteger(cantidad) ||
+            cantidad <= 0
+        ) {
 
-        return res.status(400).json({
+            return res
+                .status(400)
+                .json({
 
-            mensaje:
-                "La próxima entrega es obligatoria."
-        });
-    }
-
-
-    try {
-
-        await poolConnect;
+                    mensaje:
+                        "La cantidad debe ser mayor a cero."
+                });
+        }
 
 
-        await pool
-            .request()
-            .input(
-                "nombre",
-                sql.NVarChar(150),
-                nombre
-            )
-            .input(
-                "categoria",
-                sql.NVarChar(100),
-                categoria
-            )
-            .input(
-                "contacto",
-                sql.NVarChar(150),
-                contacto || null
-            )
-            .input(
-                "telefono",
-                sql.NVarChar(30),
-                telefono || null
-            )
-            .input(
-                "correo",
-                sql.NVarChar(150),
-                correo || null
-            )
-            .input(
-                "entregas",
-                sql.Int,
-                entregas_2026
-            )
-            .input(
-                "proximaEntrega",
-                sql.Date,
-                proxima_entrega
-            )
-            .input(
-                "estado",
-                sql.NVarChar(30),
-                estado
-            )
-            .query(`
-                INSERT INTO proveedoresMakro
-                (
-                    nombre,
-                    categoria,
-                    contacto,
-                    telefono,
-                    correo,
-                    entregas_2026,
-                    proxima_entrega,
-                    estado
+        let transaction;
+
+
+        try {
+
+            await poolConnect;
+
+
+            transaction =
+                new sql.Transaction(pool);
+
+
+            await transaction.begin(
+                sql.ISOLATION_LEVEL.SERIALIZABLE
+            );
+
+
+            const productoResult =
+                await new sql
+                    .Request(transaction)
+                    .input(
+                        "productoId",
+                        sql.Int,
+                        productoId
+                    )
+                    .query(`
+                        SELECT
+                            id,
+                            nombre,
+                            precio,
+                            stock,
+                            estado
+                        FROM productosMakro
+                        WITH (UPDLOCK, ROWLOCK)
+                        WHERE id = @productoId
+                    `);
+
+
+            if (
+                productoResult.recordset.length === 0
+            ) {
+
+                await transaction.rollback();
+
+
+                return res
+                    .status(404)
+                    .json({
+
+                        mensaje:
+                            "Producto no encontrado."
+                    });
+            }
+
+
+            const producto =
+                productoResult.recordset[0];
+
+
+            const stockActual =
+                Number(
+                    producto.stock
+                );
+
+
+            if (
+                stockActual < cantidad
+            ) {
+
+                await transaction.rollback();
+
+
+                return res
+                    .status(400)
+                    .json({
+
+                        mensaje:
+                            "Stock insuficiente."
+                    });
+            }
+
+
+            const precioUnitario =
+                Number(
+                    producto.precio
+                );
+
+
+            const total =
+                Number(
+                    (
+                        precioUnitario *
+                        cantidad
+                    ).toFixed(2)
+                );
+
+
+            const nuevoStock =
+                stockActual -
+                cantidad;
+
+
+            const nuevoEstado =
+                nuevoStock === 0
+                    ? "Agotado"
+                    : producto.estado;
+
+
+            await new sql
+                .Request(transaction)
+                .input(
+                    "productoId",
+                    sql.Int,
+                    producto.id
                 )
-                VALUES
-                (
-                    @nombre,
-                    @categoria,
-                    @contacto,
-                    @telefono,
-                    @correo,
-                    @entregas,
-                    @proximaEntrega,
-                    @estado
+                .input(
+                    "productoNombre",
+                    sql.NVarChar(150),
+                    producto.nombre
                 )
-            `);
-
-
-        return res.status(201).json({
-
-            mensaje:
-                "Proveedor registrado correctamente."
-        });
-
-    } catch (error) {
-
-        return responderErrorServidor(
-            res,
-            "Error al registrar proveedor",
-            error
-        );
-    }
-});
-
-app.get("/ventas", async (req, res) => {
-
-    try {
-
-        await poolConnect;
-
-
-        const result =
-            await pool
-                .request()
+                .input(
+                    "cantidad",
+                    sql.Int,
+                    cantidad
+                )
+                .input(
+                    "precioUnitario",
+                    sql.Decimal(10, 2),
+                    precioUnitario
+                )
+                .input(
+                    "total",
+                    sql.Decimal(10, 2),
+                    total
+                )
                 .query(`
-                    SELECT
-                        id,
+                    INSERT INTO ventasMakro
+                    (
                         producto_id,
                         producto_nombre,
                         cantidad,
                         precio_unitario,
-                        total,
-                        fecha_venta
-                    FROM ventasMakro
-                    ORDER BY id DESC
+                        total
+                    )
+                    VALUES
+                    (
+                        @productoId,
+                        @productoNombre,
+                        @cantidad,
+                        @precioUnitario,
+                        @total
+                    )
                 `);
 
 
-        return res.json(
-            result.recordset
-        );
-
-    } catch (error) {
-
-        return responderErrorServidor(
-            res,
-            "Error al obtener ventas",
-            error
-        );
-    }
-});
-
-
-app.post("/ventas", async (req, res) => {
-
-    const productoId =
-        Number(req.body.producto_id);
-
-    const cantidad =
-        Number(req.body.cantidad);
-
-
-    if (
-        !Number.isInteger(productoId) ||
-        productoId <= 0
-    ) {
-
-        return res.status(400).json({
-
-            mensaje:
-                "Producto inválido."
-        });
-    }
-
-
-    if (
-        !Number.isInteger(cantidad) ||
-        cantidad <= 0
-    ) {
-
-        return res.status(400).json({
-
-            mensaje:
-                "La cantidad debe ser mayor a cero."
-        });
-    }
-
-
-    let transaction;
-
-
-    try {
-
-        await poolConnect;
-
-
-        transaction =
-            new sql.Transaction(pool);
-
-
-        await transaction.begin(
-            sql.ISOLATION_LEVEL.SERIALIZABLE
-        );
-
-        const productoResult =
-            await new sql.Request(transaction)
+            await new sql
+                .Request(transaction)
                 .input(
                     "productoId",
                     sql.Int,
-                    productoId
+                    producto.id
+                )
+                .input(
+                    "nuevoStock",
+                    sql.Int,
+                    nuevoStock
+                )
+                .input(
+                    "nuevoEstado",
+                    sql.NVarChar(30),
+                    nuevoEstado
                 )
                 .query(`
-                    SELECT
-                        id,
-                        nombre,
-                        precio,
-                        stock,
-                        estado
-                    FROM productosMakro
-                    WITH (UPDLOCK, ROWLOCK)
+                    UPDATE productosMakro
+                    SET
+                        stock = @nuevoStock,
+                        estado = @nuevoEstado
                     WHERE id = @productoId
                 `);
 
 
-        if (
-            productoResult.recordset.length === 0
-        ) {
-
-            await transaction.rollback();
-
-            return res.status(404).json({
-
-                mensaje:
-                    "Producto no encontrado."
-            });
-        }
+            await transaction.commit();
 
 
-        const producto =
-            productoResult.recordset[0];
+            return res
+                .status(201)
+                .json({
 
+                    mensaje:
+                        "Venta registrada correctamente.",
 
-        const stockActual =
-            Number(producto.stock);
+                    venta: {
 
+                        producto:
+                            producto.nombre,
 
-        if (
-            stockActual < cantidad
-        ) {
+                        cantidad,
 
-            await transaction.rollback();
+                        precioUnitario,
 
-            return res.status(400).json({
+                        total,
 
-                mensaje:
-                    "Stock insuficiente."
-            });
-        }
+                        stockRestante:
+                            nuevoStock
+                    }
+                });
 
+        } catch (error) {
 
-        const precioUnitario =
-            Number(producto.precio);
+            if (transaction) {
 
+                try {
 
-        const total =
-            Number(
-                (
-                    precioUnitario *
-                    cantidad
-                ).toFixed(2)
-            );
+                    await transaction.rollback();
 
-
-        const nuevoStock =
-            stockActual -
-            cantidad;
-
-
-        const nuevoEstado =
-            nuevoStock === 0
-                ? "Agotado"
-                : producto.estado;
-
-
-        await new sql.Request(transaction)
-            .input(
-                "productoId",
-                sql.Int,
-                producto.id
-            )
-            .input(
-                "productoNombre",
-                sql.NVarChar(150),
-                producto.nombre
-            )
-            .input(
-                "cantidad",
-                sql.Int,
-                cantidad
-            )
-            .input(
-                "precioUnitario",
-                sql.Decimal(10, 2),
-                precioUnitario
-            )
-            .input(
-                "total",
-                sql.Decimal(10, 2),
-                total
-            )
-            .query(`
-                INSERT INTO ventasMakro
-                (
-                    producto_id,
-                    producto_nombre,
-                    cantidad,
-                    precio_unitario,
-                    total
-                )
-                VALUES
-                (
-                    @productoId,
-                    @productoNombre,
-                    @cantidad,
-                    @precioUnitario,
-                    @total
-                )
-            `);
-
-
-        await new sql.Request(transaction)
-            .input(
-                "productoId",
-                sql.Int,
-                producto.id
-            )
-            .input(
-                "nuevoStock",
-                sql.Int,
-                nuevoStock
-            )
-            .input(
-                "nuevoEstado",
-                sql.NVarChar(30),
-                nuevoEstado
-            )
-            .query(`
-                UPDATE productosMakro
-                SET
-                    stock = @nuevoStock,
-                    estado = @nuevoEstado
-                WHERE id = @productoId
-            `);
-
-
-        await transaction.commit();
-
-
-        return res.status(201).json({
-
-            mensaje:
-                "Venta registrada correctamente.",
-
-            venta: {
-
-                producto:
-                    producto.nombre,
-
-                cantidad,
-
-                precioUnitario,
-
-                total,
-
-                stockRestante:
-                    nuevoStock
-            }
-        });
-
-    } catch (error) {
-
-        if (transaction) {
-
-            try {
-
-                await transaction.rollback();
-
-            } catch (
-                rollbackError
-            ) {
-
-                console.error(
-                    "Error haciendo rollback:",
+                } catch (
                     rollbackError
-                );
+                ) {
+
+                    console.error(
+                        "Error haciendo rollback:",
+                        rollbackError
+                    );
+                }
             }
+
+
+            return responderErrorServidor(
+                res,
+                "Error al registrar venta",
+                error
+            );
         }
+    }
+);
 
+app.get(
+    "/admin",
+    (req, res) => {
 
-        return responderErrorServidor(
-            res,
-            "Error al registrar venta",
-            error
+        res.sendFile(
+            path.join(
+                __dirname,
+                "HTML",
+                "MakroAN.html"
+            )
         );
     }
-});
+);
 
-app.get("/admin", (req, res) => {
+app.get(
+    "/trabajador",
+    (req, res) => {
 
-    res.sendFile(
-        path.join(
-            __dirname,
-            "HTML",
-            "MakroAN.html"
-        )
-    );
-});
+        res.sendFile(
+            path.join(
+                __dirname,
+                "HTML",
+                "MakroPL.html"
+            )
+        );
+    }
+);
 
+app.get(
+    "/login",
+    (req, res) => {
 
-app.get("/trabajador", (req, res) => {
+        res.redirect("/");
+    }
+);
 
-    res.sendFile(
-        path.join(
-            __dirname,
-            "HTML",
-            "MakroPL.html"
-        )
-    );
-});
+app.use(
+    (req, res) => {
 
-app.get("/login", (req, res) => {
+        return res
+            .status(404)
+            .json({
 
-    res.redirect("/");
-});
-
-app.use((req, res) => {
-
-    res.status(404).json({
-
-        mensaje:
-            "Ruta no encontrada."
-    });
-});
+                mensaje:
+                    "Ruta no encontrada."
+            });
+    }
+);
 
 app.use(
     (
@@ -1635,19 +1992,23 @@ app.use(
                 "LIMIT_FILE_SIZE"
             ) {
 
-                return res.status(400).json({
+                return res
+                    .status(400)
+                    .json({
 
-                    mensaje:
-                        "La imagen supera el límite de 5 MB."
-                });
+                        mensaje:
+                            "La imagen supera el límite de 5 MB."
+                    });
             }
 
 
-            return res.status(400).json({
+            return res
+                .status(400)
+                .json({
 
-                mensaje:
-                    "Error al subir la imagen."
-            });
+                    mensaje:
+                        "Error al subir la imagen."
+                });
         }
 
 
@@ -1656,11 +2017,13 @@ app.use(
             "Solo se permiten imágenes JPG, PNG o WEBP."
         ) {
 
-            return res.status(400).json({
+            return res
+                .status(400)
+                .json({
 
-                mensaje:
-                    error.message
-            });
+                    mensaje:
+                        error.message
+                });
         }
 
 
@@ -1669,19 +2032,23 @@ app.use(
             "Origen no permitido por CORS"
         ) {
 
-            return res.status(403).json({
+            return res
+                .status(403)
+                .json({
 
-                mensaje:
-                    "Origen no permitido."
-            });
+                    mensaje:
+                        "Origen no permitido."
+                });
         }
 
 
-        return res.status(500).json({
+        return res
+            .status(500)
+            .json({
 
-            mensaje:
-                "Error interno del servidor."
-        });
+                mensaje:
+                    "Error interno del servidor."
+            });
     }
 );
 
@@ -1739,6 +2106,9 @@ http://localhost:${PORT}/ventas
 
 ----------------------------------------
 
+VERIFICAR LOGIN:
+http://localhost:${PORT}/auth/verificar
+
 HEALTH:
 http://localhost:${PORT}/health
 
@@ -1755,14 +2125,13 @@ http://localhost:${PORT}/health
 ========================================
         `);
 
-        console.error(
-            error
-        );
+
+        console.error(error);
+
 
         process.exit(1);
     }
 }
-
 
 iniciarServidor();
 
@@ -1778,6 +2147,7 @@ async function cerrarServidor(
     try {
 
         await pool.close();
+
 
         console.log(
             "✅ Conexión SQL cerrada."
