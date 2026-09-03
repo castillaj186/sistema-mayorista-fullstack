@@ -4,12 +4,12 @@
 node_modules/
 
 
-# =========================
-# VARIABLES PRIVADAS
-# =========================
+# Variables privadas
 .env
 .env.*
 
+# Permitir el ejemplo público
+!.env.example
 
 # =========================
 # BASE DE DATOS / BACKUPS
